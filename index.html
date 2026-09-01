@@ -3,176 +3,270 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ITF-14 → JAN 変換アプリ</title>
+<title>ITF-14 → JAN-13 変換</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/umd/index.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
 <style>
-body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f5f7;margin:0;padding:20px}
+body{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;background:#f5f5f7;margin:0;padding:20px;color:#222}
 .container{max-width:600px;margin:auto}
-h1{text-align:center}
-.box{background:#fff;padding:20px;margin:15px 0;border-radius:15px;box-shadow:0 2px 8px #0001}
-button{width:100%;padding:15px;margin:8px 0;border:0;border-radius:10px;background:#007aff;color:#fff;font-size:17px;font-weight:bold}
+h1{text-align:center;font-size:27px}
+.box{background:#fff;padding:20px;margin:15px 0;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+button{width:100%;padding:15px;margin:8px 0;border:0;border-radius:11px;background:#007aff;color:#fff;font-size:17px;font-weight:bold}
 .stop{background:#777}
 input{width:100%;padding:13px;font-size:18px;box-sizing:border-box;border:1px solid #ccc;border-radius:10px}
-video{width:100%;margin-top:15px;border-radius:12px;background:#000;display:block}
-.result{text-align:center}.itf{font-size:20px;font-weight:bold}.jan{font-size:25px;font-weight:bold;margin-top:10px}
+video{width:100%;display:block;margin-top:15px;border-radius:12px;background:#000;min-height:220px}
+#message{text-align:center;margin-top:12px;font-weight:bold;line-height:1.5}
+.result{text-align:center}
+.itf{font-size:20px;font-weight:bold}
+.jan{font-size:25px;font-weight:bold;margin-top:8px}
 #barcode{max-width:100%;margin-top:15px}
-#message{text-align:center;margin-top:15px;font-weight:bold}
 .note{font-size:13px;color:#666;line-height:1.5}
+.success{color:#007aff}
+.error{color:#d00}
 </style>
 </head>
+
 <body>
 <div class="container">
+
 <h1>📦 ITF-14 → JAN-13</h1>
 
 <div class="box">
-<h2>① ITF-14をカメラで読み取る</h2>
-<button onclick="startCamera()">📷 カメラを起動</button>
+<h2>① ITF-14を読み取る</h2>
+
+<button onclick="startScanner()">📷 カメラを起動</button>
+
 <video id="video" autoplay muted playsinline></video>
-<button class="stop" onclick="stopCamera()">カメラを停止</button>
+
+<button class="stop" onclick="stopScanner()">カメラを停止</button>
+
 <div id="message">「カメラを起動」を押してください。</div>
-<p class="note">バーコード全体が映るようにしてください。ピントが合うまで少し待つと読み取りやすくなります。</p>
+
+<p class="note">
+バーコード全体を画面に入れてください。<br>
+できるだけ明るい場所で、ピントが合うまで少し待ってください。
+</p>
 </div>
 
 <div class="box">
-<h2>② ITF-14を直接入力</h2>
-<input id="input" type="text" inputmode="numeric" maxlength="14" placeholder="ITF-14（14桁）">
+<h2>② 手入力でも確認できます</h2>
+
+<input id="input"
+       type="text"
+       inputmode="numeric"
+       maxlength="14"
+       placeholder="ITF-14（14桁）">
+
 <button onclick="convert()">JANに変換</button>
 </div>
 
 <div class="box">
 <h2>③ 変換結果</h2>
+
 <div class="result">
 <div>ITF-14</div>
 <div id="itf" class="itf">---</div>
+
 <div style="margin-top:20px">JAN-13</div>
 <div id="jan" class="jan">---</div>
+
 <svg id="barcode"></svg>
 </div>
 </div>
+
 </div>
 
 <script>
-let stream=null;
-let reader=null;
-let controls=null;
+let reader = null;
+let controls = null;
 
-async function startCamera(){
-  stopCamera();
-  const message=document.getElementById("message");
+/*
+  今回の重要な修正：
+  以前は getUserMedia() でカメラを開いた後、
+  decodeFromVideoDevice() でもう一度カメラを開いていました。
+  Safariではこれが競合することがあります。
+
+  今回はZXingにカメラの取得から読み取りまで
+  一括して任せます。
+*/
+
+async function startScanner(){
+
+  stopScanner();
+
+  const message = document.getElementById("message");
+  message.className = "";
+  message.textContent = "カメラを起動しています…";
+
   try{
-    message.textContent="カメラを起動しています…";
 
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      throw new Error("このブラウザではカメラを利用できません");
-    }
-
-    stream=await navigator.mediaDevices.getUserMedia({
-      video:{
-        facingMode:{ideal:"environment"},
-        width:{ideal:1280},
-        height:{ideal:720}
-      },
-      audio:false
-    });
-
-    const video=document.getElementById("video");
-    video.srcObject=stream;
-    await video.play();
-
-    message.textContent="バーコードをカメラに映してください。";
-
-    reader=new ZXingBrowser.BrowserMultiFormatReader();
+    reader = new ZXingBrowser.BrowserMultiFormatReader();
 
     /*
-      ITFを明示的に指定。
-      ZXingのITFフォーマットはITF-14を読み取るのに使用できます。
+      nullを指定して、背面カメラを優先。
+      ZXing側にカメラの管理を任せる。
     */
-    const hints=new Map();
-    hints.set(
-      ZXingBrowser.DecodeHintType.POSSIBLE_FORMATS,
-      [ZXingBrowser.BarcodeFormat.ITF]
-    );
+    controls = await reader.decodeFromConstraints(
+      {
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      },
+      document.getElementById("video"),
+      (result, error, ctrl) => {
 
-    reader=new ZXingBrowser.BrowserMultiFormatReader(hints);
-
-    controls=await reader.decodeFromVideoDevice(
-      undefined,
-      video,
-      (result,error,ctrl)=>{
         if(!result) return;
 
-        const raw=result.getText().trim();
-        const digits=raw.replace(/\D/g,"");
+        const text = result.getText().trim();
+        const digits = text.replace(/\D/g, "");
 
-        if(digits.length===14){
-          document.getElementById("input").value=digits;
+        /*
+          ITF-14なら14桁。
+          余計な文字が入っていても数字だけ取り出す。
+        */
+        if(digits.length === 14){
+
+          document.getElementById("input").value = digits;
+
           convert();
-          message.textContent="読み取り成功！";
-          ctrl.stop();
-          stopCamera();
+
+          message.className = "success";
+          message.textContent = "✅ 読み取り成功！";
+
+          setTimeout(() => {
+            stopScanner();
+          }, 300);
+
         }else{
-          message.textContent="バーコードを認識しました。14桁になるまで調整してください。";
+
+          message.textContent =
+            "バーコードを認識中…（14桁のITF-14を映してください）";
+
         }
+
       }
     );
 
+    message.textContent =
+      "📷 カメラ起動中。ITF-14を映してください。";
+
   }catch(error){
+
     console.error(error);
-    message.textContent="カメラを起動できませんでした。Safariのカメラ許可を確認してください。";
+
+    message.className = "error";
+
+    /*
+      ここでは「カメラ許可エラー」と決めつけない。
+      カメラが起動した後の読み取りエラーも区別する。
+    */
+    if(error && error.name === "NotAllowedError"){
+      message.textContent =
+        "カメラの使用が許可されていません。Safariのこのサイトのカメラ設定を確認してください。";
+    }else if(error && error.name === "NotFoundError"){
+      message.textContent =
+        "カメラが見つかりませんでした。";
+    }else{
+      message.textContent =
+        "カメラの読み取りを開始できませんでした。もう一度「カメラを起動」を押してください。";
+    }
+
   }
 }
 
-function stopCamera(){
+
+function stopScanner(){
+
   if(controls){
-    try{controls.stop();}catch(e){}
-    controls=null;
+    try{
+      controls.stop();
+    }catch(e){}
+    controls = null;
   }
+
   if(reader){
-    try{reader.reset();}catch(e){}
+    try{
+      reader.reset();
+    }catch(e){}
+    reader = null;
   }
-  if(stream){
-    stream.getTracks().forEach(track=>track.stop());
-    stream=null;
+
+  const video = document.getElementById("video");
+
+  if(video.srcObject){
+    video.srcObject.getTracks().forEach(track => track.stop());
+    video.srcObject = null;
   }
-  document.getElementById("video").srcObject=null;
 }
 
+
+/*
+  ITF-14 → JAN-13
+
+  現在の仕様：
+  ITF-14の先頭が0の場合、
+  先頭の0を取り除いた13桁をJAN-13として表示。
+*/
 function convert(){
-  const value=document.getElementById("input").value.replace(/\D/g,"");
 
-  if(value.length!==14){
-    document.getElementById("message").textContent="ITF-14は14桁で入力してください。";
+  const value =
+    document.getElementById("input").value.replace(/\D/g,"");
+
+  if(value.length !== 14){
+
+    document.getElementById("message").className = "error";
+    document.getElementById("message").textContent =
+      "ITF-14は14桁で入力してください。";
+
     return;
   }
 
-  if(value.charAt(0)!=="0"){
-    document.getElementById("message").textContent="現在は先頭が0のITF-14に対応しています。";
+  if(value.charAt(0) !== "0"){
+
+    document.getElementById("message").className = "error";
+    document.getElementById("message").textContent =
+      "現在は先頭が0のITF-14に対応しています。";
+
     return;
   }
 
-  const jan=value.substring(1);
+  const jan = value.substring(1);
 
-  document.getElementById("itf").textContent=value;
-  document.getElementById("jan").textContent=jan;
+  document.getElementById("itf").textContent = value;
+  document.getElementById("jan").textContent = jan;
 
   try{
-    JsBarcode("#barcode",jan,{
-      format:"EAN13",
-      width:2,
-      height:100,
-      displayValue:true,
-      fontSize:18,
-      margin:10
+
+    JsBarcode("#barcode", jan, {
+      format: "EAN13",
+      width: 2,
+      height: 100,
+      displayValue: true,
+      fontSize: 18,
+      margin: 10
     });
+
   }catch(error){
+
     console.error(error);
-    document.getElementById("message").textContent="JANバーコードの表示に失敗しました。";
+
+    document.getElementById("message").className = "error";
+    document.getElementById("message").textContent =
+      "JANバーコードを表示できませんでした。";
+
     return;
   }
 
-  document.getElementById("message").textContent="変換しました！";
+  document.getElementById("message").className = "success";
+  document.getElementById("message").textContent =
+    "✅ 変換しました！";
 }
 </script>
+
 </body>
 </html>
