@@ -312,7 +312,7 @@ async function startScanner(){
 
     try{
         await scanner.start(
-            {facingMode:{ideal:"environment"}},
+            {facingMode:"environment"},
             {fps:10,qrbox:{width:350,height:120},aspectRatio:1.7777778,disableFlip:false},
             onScanSuccess,
             onScanFailure
@@ -355,7 +355,7 @@ async function startJanScanner(){
 
     try{
         await scanner.start(
-            {facingMode:{ideal:"environment"}},
+            {facingMode:"environment"},
             {fps:10,qrbox:{width:350,height:120},aspectRatio:1.7777778,disableFlip:false},
             onJanScanSuccess,
             onJanScanFailure
