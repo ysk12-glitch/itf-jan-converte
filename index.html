@@ -11,7 +11,6 @@
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
-<!-- JANバーコード生成 -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
 <style>
@@ -86,25 +85,42 @@ button.gray {
     margin-top: 5px;
 }
 
+/* 読み取り成功表示 */
+
+#successMessage {
+    display: none;
+    max-width: 500px;
+    margin: 15px auto;
+    padding: 15px;
+    background: #d1e7dd;
+    color: #0f5132;
+    border-radius: 12px;
+    font-size: 22px;
+    font-weight: bold;
+}
+
 /* JANバーコード */
 
 #janBarcodeArea {
+    display: none;
     margin-top: 20px;
-    padding: 15px;
+    padding: 20px 10px;
     background: white;
-    border-radius: 12px;
-    overflow-x: auto;
+    border-radius: 15px;
+    border: 3px solid #198754;
+}
+
+.barcodeTitle {
+    font-size: 20px;
+    font-weight: bold;
+    color: #198754;
+    margin-bottom: 10px;
 }
 
 #janBarcode {
     width: 100%;
     max-width: 420px;
     height: 140px;
-}
-
-.barcodeTitle {
-    font-weight: bold;
-    margin-bottom: 10px;
 }
 
 #status {
@@ -242,6 +258,13 @@ button.gray {
 </div>
 
 
+<!-- 読み取り成功 -->
+
+<div id="successMessage">
+    🎉 ITF読み取り成功！
+</div>
+
+
 <div class="result">
 
     <div class="label">
@@ -264,8 +287,7 @@ button.gray {
 
     <!-- JANバーコード -->
 
-    <div id="janBarcodeArea"
-         style="display:none;">
+    <div id="janBarcodeArea">
 
         <div class="barcodeTitle">
             🏷️ バラ売りJANバーコード
@@ -274,8 +296,8 @@ button.gray {
         <svg id="janBarcode"></svg>
 
         <p class="small">
-            このバーコードを別のバーコードリーダーで
-            読み取ることができます。
+            表示されたバーコードを
+            バーコードリーダーで読み取れます。
         </p>
 
     </div>
@@ -509,7 +531,8 @@ function showJanBarcode(jan) {
         area.style.display =
             "none";
 
-        barcode.innerHTML = "";
+        barcode.innerHTML =
+            "";
 
         return;
 
@@ -517,10 +540,6 @@ function showJanBarcode(jan) {
 
 
     try {
-
-        /*
-           JAN-13バーコードを生成
-        */
 
         JsBarcode(
             barcode,
@@ -549,6 +568,20 @@ function showJanBarcode(jan) {
 
         area.style.display =
             "block";
+
+
+        /*
+         * バーコードが表示されたら
+         * すぐそこへ移動
+         */
+
+        area.scrollIntoView({
+
+            behavior: "smooth",
+
+            block: "center"
+
+        });
 
 
     } catch (error) {
@@ -582,6 +615,37 @@ function hideJanBarcode() {
         "janBarcode"
     ).innerHTML =
         "";
+
+}
+
+
+/* =====================================
+   成功表示
+===================================== */
+
+function showSuccessMessage() {
+
+    const message =
+        document.getElementById(
+            "successMessage"
+        );
+
+    message.style.display =
+        "block";
+
+}
+
+
+/* =====================================
+   成功表示を消す
+===================================== */
+
+function hideSuccessMessage() {
+
+    document.getElementById(
+        "successMessage"
+    ).style.display =
+        "none";
 
 }
 
@@ -871,6 +935,13 @@ function convertITF14(value) {
 
 
     /*
+       読み取り成功！
+    */
+
+    showSuccessMessage();
+
+
+    /*
        登録済みデータ
     */
 
@@ -1065,10 +1136,6 @@ function convertITF14(value) {
 
     }
 
-
-    /*
-       その他
-    */
 
     else {
 
@@ -1317,8 +1384,6 @@ function onJanScanFailure(
     error
 ) {
 
-    /* 何もしない */
-
 }
 
 
@@ -1392,6 +1457,9 @@ async function saveMappingFromScan(
     displayJan(
         jan
     );
+
+
+    showSuccessMessage();
 
 
     document.getElementById(
@@ -1709,8 +1777,6 @@ function onScanFailure(
     error
 ) {
 
-    /* 何もしない */
-
 }
 
 
@@ -1721,6 +1787,11 @@ function onScanFailure(
 async function restartScanner() {
 
     await destroyScanner();
+
+
+    hideSuccessMessage();
+
+    hideJanBarcode();
 
 
     document.getElementById(
@@ -1745,9 +1816,6 @@ async function restartScanner() {
         "jan"
     ).textContent =
         "---";
-
-
-    hideJanBarcode();
 
 
     document.getElementById(
