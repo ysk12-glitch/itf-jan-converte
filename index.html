@@ -11,6 +11,9 @@
 
 <script src="https://unpkg.com/html5-qrcode"></script>
 
+<!-- JANバーコード生成 -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
 <style>
 
 body {
@@ -81,6 +84,27 @@ button.gray {
     font-weight: bold;
     word-break: break-all;
     margin-top: 5px;
+}
+
+/* JANバーコード */
+
+#janBarcodeArea {
+    margin-top: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 12px;
+    overflow-x: auto;
+}
+
+#janBarcode {
+    width: 100%;
+    max-width: 420px;
+    height: 140px;
+}
+
+.barcodeTitle {
+    font-weight: bold;
+    margin-bottom: 10px;
 }
 
 #status {
@@ -235,6 +259,25 @@ button.gray {
 
     <div id="jan" class="code">
         ---
+    </div>
+
+
+    <!-- JANバーコード -->
+
+    <div id="janBarcodeArea"
+         style="display:none;">
+
+        <div class="barcodeTitle">
+            🏷️ バラ売りJANバーコード
+        </div>
+
+        <svg id="janBarcode"></svg>
+
+        <p class="small">
+            このバーコードを別のバーコードリーダーで
+            読み取ることができます。
+        </p>
+
     </div>
 
 </div>
@@ -445,6 +488,105 @@ let isScanning = false;
 
 
 /* =====================================
+   JANバーコード表示
+===================================== */
+
+function showJanBarcode(jan) {
+
+    const area =
+        document.getElementById(
+            "janBarcodeArea"
+        );
+
+    const barcode =
+        document.getElementById(
+            "janBarcode"
+        );
+
+
+    if (!isValidJan(jan)) {
+
+        area.style.display =
+            "none";
+
+        barcode.innerHTML = "";
+
+        return;
+
+    }
+
+
+    try {
+
+        /*
+           JAN-13バーコードを生成
+        */
+
+        JsBarcode(
+            barcode,
+            jan,
+            {
+
+                format: "EAN13",
+
+                width: 2,
+
+                height: 110,
+
+                displayValue: true,
+
+                fontSize: 20,
+
+                margin: 10,
+
+                background: "#ffffff",
+
+                lineColor: "#000000"
+
+            }
+        );
+
+
+        area.style.display =
+            "block";
+
+
+    } catch (error) {
+
+        console.error(
+            "バーコード生成エラー:",
+            error
+        );
+
+        area.style.display =
+            "none";
+
+    }
+
+}
+
+
+/* =====================================
+   JANバーコード非表示
+===================================== */
+
+function hideJanBarcode() {
+
+    document.getElementById(
+        "janBarcodeArea"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "janBarcode"
+    ).innerHTML =
+        "";
+
+}
+
+
+/* =====================================
    チェックデジット
 ===================================== */
 
@@ -458,24 +600,32 @@ function calculateCheckDigit(code) {
         i--
     ) {
 
-        let number = Number(code[i]);
+        let number =
+            Number(code[i]);
 
         let positionFromRight =
             code.length - i;
 
-        if (positionFromRight % 2 === 1) {
+        if (
+            positionFromRight % 2 === 1
+        ) {
 
-            sum += number * 3;
+            sum +=
+                number * 3;
 
         } else {
 
-            sum += number;
+            sum +=
+                number;
 
         }
 
     }
 
-    return (10 - (sum % 10)) % 10;
+    return (
+        10 -
+        (sum % 10)
+    ) % 10;
 
 }
 
@@ -486,19 +636,27 @@ function calculateCheckDigit(code) {
 
 function isValidJan(jan) {
 
-    if (!/^\d{13}$/.test(jan)) {
+    if (
+        !/^\d{13}$/.test(jan)
+    ) {
 
         return false;
 
     }
+
 
     let calculated =
         calculateCheckDigit(
             jan.substring(0, 12)
         );
 
-    return calculated ===
-        Number(jan.substring(12));
+
+    return (
+        calculated ===
+        Number(
+            jan.substring(12)
+        )
+    );
 
 }
 
@@ -562,18 +720,25 @@ function addHistory(
     let history =
         getHistory();
 
+
     let now =
         Date.now();
 
-    if (history.length > 0) {
+
+    if (
+        history.length > 0
+    ) {
 
         let latest =
             history[0];
 
+
         if (
             latest.itf === itf &&
             latest.jan === jan &&
-            now - latest.timestamp < 5000
+            now -
+                latest.timestamp <
+                5000
         ) {
 
             return;
@@ -581,6 +746,7 @@ function addHistory(
         }
 
     }
+
 
     history.unshift({
 
@@ -603,10 +769,30 @@ function addHistory(
 
     });
 
+
     localStorage.setItem(
         "conversionHistory",
-        JSON.stringify(history)
+        JSON.stringify(
+            history
+        )
     );
+
+}
+
+
+/* =====================================
+   JAN表示
+===================================== */
+
+function displayJan(jan) {
+
+    document.getElementById(
+        "jan"
+    ).textContent =
+        jan;
+
+
+    showJanBarcode(jan);
 
 }
 
@@ -618,48 +804,60 @@ function addHistory(
 function convertITF14(value) {
 
     let code =
-        value.replace(/\D/g, "");
+        value.replace(
+            /\D/g,
+            ""
+        );
 
 
-    if (code.length !== 14) {
+    if (
+        code.length !== 14
+    ) {
 
         document.getElementById(
             "status"
         ).textContent =
             "⚠️ ITF-14ではありません";
 
+
         document.getElementById(
             "status"
         ).className =
             "error";
+
 
         return;
 
     }
 
 
-    /* ITFチェックデジット */
-
     let calculated =
         calculateCheckDigit(
             code.substring(0, 13)
         );
 
+
     let actual =
-        Number(code.substring(13));
+        Number(
+            code.substring(13)
+        );
 
 
-    if (calculated !== actual) {
+    if (
+        calculated !== actual
+    ) {
 
         document.getElementById(
             "status"
         ).textContent =
             "⚠️ チェックデジットが違います";
 
+
         document.getElementById(
             "status"
         ).className =
             "error";
+
 
         return;
 
@@ -673,11 +871,12 @@ function convertITF14(value) {
 
 
     /*
-       登録済みデータを確認
+       登録済みデータ
     */
 
     let mappings =
         getMappings();
+
 
     let registeredJan =
         mappings[code];
@@ -685,46 +884,53 @@ function convertITF14(value) {
 
     if (registeredJan) {
 
-        document.getElementById(
-            "jan"
-        ).textContent =
-            registeredJan;
+        displayJan(
+            registeredJan
+        );
+
 
         document.getElementById(
             "registeredJan"
         ).textContent =
             registeredJan;
 
+
         document.getElementById(
             "registeredArea"
         ).style.display =
             "block";
+
 
         document.getElementById(
             "registerArea"
         ).style.display =
             "none";
 
+
         document.getElementById(
             "janScanArea"
         ).style.display =
             "none";
+
 
         document.getElementById(
             "status"
         ).textContent =
             "✅ 登録済みのバラJANを表示しました！";
 
+
         document.getElementById(
             "status"
         ).className =
             "success";
+
 
         addHistory(
             code,
             registeredJan,
             "登録データ"
         );
+
 
         stopScanner();
 
@@ -736,48 +942,51 @@ function convertITF14(value) {
 
 
     /*
-       =================================
        先頭1～8
-       → バラJANを自動計算
-       =================================
+       自動変換
     */
 
     let firstDigit =
-        code.substring(0, 1);
+        code.substring(
+            0,
+            1
+        );
 
 
-    if (/^[1-8]$/.test(firstDigit)) {
-
-        /*
-           ITF-14
-
-           1桁目 = インジケータ
-           2～13桁目 = JANの先頭12桁
-           14桁目 = ITFチェックデジット
-        */
+    if (
+        /^[1-8]$/.test(
+            firstDigit
+        )
+    ) {
 
         let body =
-            code.substring(1, 13);
+            code.substring(
+                1,
+                13
+            );
 
 
         let janCheck =
-            calculateCheckDigit(body);
+            calculateCheckDigit(
+                body
+            );
 
 
         let candidateJan =
-            body + janCheck;
+            body +
+            janCheck;
 
 
-        document.getElementById(
-            "jan"
-        ).textContent =
-            candidateJan;
+        displayJan(
+            candidateJan
+        );
 
 
         document.getElementById(
             "status"
         ).textContent =
             "✅ バラJANを自動計算しました！";
+
 
         document.getElementById(
             "status"
@@ -790,10 +999,12 @@ function convertITF14(value) {
         ).style.display =
             "none";
 
+
         document.getElementById(
             "registeredArea"
         ).style.display =
             "none";
+
 
         document.getElementById(
             "janScanArea"
@@ -811,25 +1022,23 @@ function convertITF14(value) {
 
 
     /*
-       =================================
        先頭0
-       → ケースJANの可能性がある
-       → 自動確定しない
-       =================================
     */
 
-    else if (firstDigit === "0") {
+    else if (
+        firstDigit === "0"
+    ) {
 
-        document.getElementById(
-            "jan"
-        ).textContent =
-            "---";
+        displayJan(
+            "---"
+        );
 
 
         document.getElementById(
             "status"
         ).textContent =
             "⚠️ バラJANを確認してください";
+
 
         document.getElementById(
             "status"
@@ -842,10 +1051,12 @@ function convertITF14(value) {
         ).style.display =
             "block";
 
+
         document.getElementById(
             "registeredArea"
         ).style.display =
             "none";
+
 
         document.getElementById(
             "janScanArea"
@@ -856,23 +1067,21 @@ function convertITF14(value) {
 
 
     /*
-       =================================
        その他
-       =================================
     */
 
     else {
 
-        document.getElementById(
-            "jan"
-        ).textContent =
-            "---";
+        displayJan(
+            "---"
+        );
 
 
         document.getElementById(
             "status"
         ).textContent =
             "⚠️ このITFは自動変換できません";
+
 
         document.getElementById(
             "status"
@@ -885,10 +1094,12 @@ function convertITF14(value) {
         ).style.display =
             "block";
 
+
         document.getElementById(
             "registeredArea"
         ).style.display =
             "none";
+
 
         document.getElementById(
             "janScanArea"
@@ -911,9 +1122,13 @@ function convertITF14(value) {
 
 function vibrate() {
 
-    if (navigator.vibrate) {
+    if (
+        navigator.vibrate
+    ) {
 
-        navigator.vibrate(100);
+        navigator.vibrate(
+            100
+        );
 
     }
 
@@ -925,10 +1140,6 @@ function vibrate() {
 ===================================== */
 
 async function startJanScanner() {
-
-    /*
-       現在のITFスキャナーを完全終了
-    */
 
     await destroyScanner();
 
@@ -963,19 +1174,17 @@ async function startJanScanner() {
         "";
 
 
-    /*
-       JAN-13専用スキャナー
-    */
-
     scanner =
         new Html5Qrcode(
             "reader",
             {
+
                 formatsToSupport: [
 
                     Html5QrcodeSupportedFormats.EAN_13
 
                 ]
+
             }
         );
 
@@ -994,8 +1203,11 @@ async function startJanScanner() {
                 fps: 10,
 
                 qrbox: {
+
                     width: 350,
+
                     height: 120
+
                 },
 
                 aspectRatio:
@@ -1013,18 +1225,22 @@ async function startJanScanner() {
         );
 
 
-        isScanning = true;
+        isScanning =
+            true;
 
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
 
 
         document.getElementById(
             "status"
         ).textContent =
             "カメラを起動できませんでした。Safariのカメラ許可を確認してください。";
+
 
         document.getElementById(
             "status"
@@ -1045,7 +1261,9 @@ function onJanScanSuccess(
     decodedResult
 ) {
 
-    if (!isScanning) {
+    if (
+        !isScanning
+    ) {
 
         return;
 
@@ -1053,39 +1271,40 @@ function onJanScanSuccess(
 
 
     let jan =
-        decodedText
-        .replace(/\D/g, "");
+        decodedText.replace(
+            /\D/g,
+            ""
+        );
 
 
-    /*
-       JAN-13チェック
-    */
-
-    if (!isValidJan(jan)) {
+    if (
+        !isValidJan(jan)
+    ) {
 
         document.getElementById(
             "status"
         ).textContent =
             "⚠️ JANのチェックデジットが違います。もう一度読み取ってください。";
 
+
         document.getElementById(
             "status"
         ).className =
             "error";
+
 
         return;
 
     }
 
 
-    /*
-       読み取り成功
-    */
-
-    isScanning = false;
+    isScanning =
+        false;
 
 
-    saveMappingFromScan(jan);
+    saveMappingFromScan(
+        jan
+    );
 
 }
 
@@ -1094,9 +1313,11 @@ function onJanScanSuccess(
    JAN読み取り失敗
 ===================================== */
 
-function onJanScanFailure(error) {
+function onJanScanFailure(
+    error
+) {
 
-    /* 通常の読み取り失敗なので何もしない */
+    /* 何もしない */
 
 }
 
@@ -1105,7 +1326,9 @@ function onJanScanFailure(error) {
    JAN読み取りから登録
 ===================================== */
 
-async function saveMappingFromScan(jan) {
+async function saveMappingFromScan(
+    jan
+) {
 
     let itf =
         document.getElementById(
@@ -1113,11 +1336,14 @@ async function saveMappingFromScan(jan) {
         ).textContent;
 
 
-    if (!/^\d{14}$/.test(itf)) {
+    if (
+        !/^\d{14}$/.test(itf)
+    ) {
 
         alert(
             "ITF-14がありません。"
         );
+
 
         await restartScanner();
 
@@ -1126,29 +1352,26 @@ async function saveMappingFromScan(jan) {
     }
 
 
-    if (!isValidJan(jan)) {
+    if (
+        !isValidJan(jan)
+    ) {
 
         alert(
             "JAN-13が正しくありません。"
         );
 
-        isScanning = true;
+
+        isScanning =
+            true;
+
 
         return;
 
     }
 
 
-    /*
-       カメラ停止
-    */
-
     await stopScanner();
 
-
-    /*
-       登録
-    */
 
     let mappings =
         getMappings();
@@ -1160,18 +1383,15 @@ async function saveMappingFromScan(jan) {
 
     localStorage.setItem(
         "caseToUnitJAN",
-        JSON.stringify(mappings)
+        JSON.stringify(
+            mappings
+        )
     );
 
 
-    /*
-       画面表示
-    */
-
-    document.getElementById(
-        "jan"
-    ).textContent =
-        jan;
+    displayJan(
+        jan
+    );
 
 
     document.getElementById(
@@ -1278,7 +1498,9 @@ async function stopScanner() {
 
     try {
 
-        if (isScanning) {
+        if (
+            isScanning
+        ) {
 
             await scanner.stop();
 
@@ -1294,7 +1516,8 @@ async function stopScanner() {
     }
 
 
-    isScanning = false;
+    isScanning =
+        false;
 
 }
 
@@ -1326,12 +1549,14 @@ async function destroyScanner() {
     }
 
 
-    scanner = null;
+    scanner =
+        null;
 
 
     document.getElementById(
         "reader"
-    ).innerHTML = "";
+    ).innerHTML =
+        "";
 
 }
 
@@ -1363,19 +1588,17 @@ async function startScanner() {
         "none";
 
 
-    const formatsToSupport = [
-
-        Html5QrcodeSupportedFormats.ITF
-
-    ];
-
-
     scanner =
         new Html5Qrcode(
             "reader",
             {
-                formatsToSupport:
-                    formatsToSupport
+
+                formatsToSupport: [
+
+                    Html5QrcodeSupportedFormats.ITF
+
+                ]
+
             }
         );
 
@@ -1394,8 +1617,11 @@ async function startScanner() {
                 fps: 10,
 
                 qrbox: {
+
                     width: 350,
+
                     height: 120
+
                 },
 
                 aspectRatio:
@@ -1413,7 +1639,8 @@ async function startScanner() {
         );
 
 
-        isScanning = true;
+        isScanning =
+            true;
 
 
         document.getElementById(
@@ -1424,13 +1651,16 @@ async function startScanner() {
 
     } catch (error) {
 
-        console.error(error);
+        console.error(
+            error
+        );
 
 
         document.getElementById(
             "status"
         ).textContent =
             "カメラを起動できませんでした。Safariのカメラ許可を確認してください。";
+
 
         document.getElementById(
             "status"
@@ -1451,14 +1681,17 @@ function onScanSuccess(
     decodedResult
 ) {
 
-    if (!isScanning) {
+    if (
+        !isScanning
+    ) {
 
         return;
 
     }
 
 
-    isScanning = false;
+    isScanning =
+        false;
 
 
     convertITF14(
@@ -1472,9 +1705,11 @@ function onScanSuccess(
    ITFスキャン失敗
 ===================================== */
 
-function onScanFailure(error) {
+function onScanFailure(
+    error
+) {
 
-    /* 通常の読み取り失敗なので何もしない */
+    /* 何もしない */
 
 }
 
@@ -1510,6 +1745,9 @@ async function restartScanner() {
         "jan"
     ).textContent =
         "---";
+
+
+    hideJanBarcode();
 
 
     document.getElementById(
@@ -1565,7 +1803,9 @@ function showHistory() {
         );
 
 
-    if (history.length === 0) {
+    if (
+        history.length === 0
+    ) {
 
         list.innerHTML =
             '<div class="empty">履歴はありません</div>';
@@ -1575,35 +1815,38 @@ function showHistory() {
     }
 
 
-    let html = "";
+    let html =
+        "";
 
 
-    history.forEach(function(item) {
+    history.forEach(
+        function(item) {
 
-        html +=
+            html +=
 
-            '<div class="listItem">' +
+                '<div class="listItem">' +
 
-            '<strong>' +
-            item.date +
-            '</strong><br>' +
+                '<strong>' +
+                item.date +
+                '</strong><br>' +
 
-            'ITF-14：' +
-            item.itf +
-            '<br>' +
+                'ITF-14：' +
+                item.itf +
+                '<br>' +
 
-            'JAN：' +
-            item.jan +
-            '<br>' +
+                'JAN：' +
+                item.jan +
+                '<br>' +
 
-            '<span class="small">' +
-            '方法：' +
-            item.method +
-            '</span>' +
+                '<span class="small">' +
+                '方法：' +
+                item.method +
+                '</span>' +
 
-            '</div>';
+                '</div>';
 
-    });
+        }
+    );
 
 
     list.innerHTML =
@@ -1629,7 +1872,9 @@ function showMappings() {
 
 
     let keys =
-        Object.keys(mappings);
+        Object.keys(
+            mappings
+        );
 
 
     document.getElementById(
@@ -1644,7 +1889,10 @@ function showMappings() {
         document.getElementById(
             "mappingSearch"
         ).value
-        .replace(/\D/g, "");
+        .replace(
+            /\D/g,
+            ""
+        );
 
 
     let list =
@@ -1654,24 +1902,33 @@ function showMappings() {
 
 
     let filtered =
-        keys.filter(function(itf) {
+        keys.filter(
+            function(itf) {
 
-            if (!search) {
+                if (!search) {
 
-                return true;
+                    return true;
+
+                }
+
+
+                return (
+
+                    itf.includes(search) ||
+
+                    mappings[itf].includes(
+                        search
+                    )
+
+                );
 
             }
+        );
 
 
-            return (
-                itf.includes(search) ||
-                mappings[itf].includes(search)
-            );
-
-        });
-
-
-    if (filtered.length === 0) {
+    if (
+        filtered.length === 0
+    ) {
 
         list.innerHTML =
             '<div class="empty">該当する登録データはありません</div>';
@@ -1681,35 +1938,39 @@ function showMappings() {
     }
 
 
-    let html = "";
+    let html =
+        "";
 
 
-    filtered.forEach(function(itf) {
+    filtered.forEach(
+        function(itf) {
 
-        html +=
+            html +=
 
-            '<div class="listItem">' +
+                '<div class="listItem">' +
 
-            'ケースITF：<strong>' +
-            itf +
-            '</strong><br>' +
+                'ケースITF：<strong>' +
+                itf +
+                '</strong><br>' +
 
-            'バラJAN：<strong>' +
-            mappings[itf] +
-            '</strong><br>' +
+                'バラJAN：<strong>' +
+                mappings[itf] +
+                '</strong><br>' +
 
-            '<button class="deleteButton" ' +
-            'onclick="deleteMapping(\'' +
-            itf +
-            '\')">' +
+                '<button class="deleteButton" ' +
 
-            'この登録を削除' +
+                'onclick="deleteMapping(\'' +
+                itf +
+                '\')">' +
 
-            '</button>' +
+                'この登録を削除' +
 
-            '</div>';
+                '</button>' +
 
-    });
+                '</div>';
+
+        }
+    );
 
 
     list.innerHTML =
@@ -1745,7 +2006,9 @@ function deleteMapping(itf) {
 
     localStorage.setItem(
         "caseToUnitJAN",
-        JSON.stringify(mappings)
+        JSON.stringify(
+            mappings
+        )
     );
 
 
@@ -1800,7 +2063,9 @@ function downloadCSV(
 
     let blob =
         new Blob(
-            [bom + csv],
+            [
+                bom + csv
+            ],
             {
                 type:
                     "text/csv;charset=utf-8;"
@@ -1809,7 +2074,9 @@ function downloadCSV(
 
 
     let url =
-        URL.createObjectURL(blob);
+        URL.createObjectURL(
+            blob
+        );
 
 
     let link =
@@ -1856,7 +2123,9 @@ function exportHistoryCSV() {
         getHistory();
 
 
-    if (history.length === 0) {
+    if (
+        history.length === 0
+    ) {
 
         alert(
             "変換履歴がありません"
@@ -1871,19 +2140,29 @@ function exportHistoryCSV() {
         "日時,ITF-14,JAN,変換方法\n";
 
 
-    history.forEach(function(item) {
+    history.forEach(
+        function(item) {
 
-        csv +=
-            csvEscape(item.date) +
-            "," +
-            csvEscape(item.itf) +
-            "," +
-            csvEscape(item.jan) +
-            "," +
-            csvEscape(item.method) +
-            "\n";
+            csv +=
+                csvEscape(
+                    item.date
+                ) +
+                "," +
+                csvEscape(
+                    item.itf
+                ) +
+                "," +
+                csvEscape(
+                    item.jan
+                ) +
+                "," +
+                csvEscape(
+                    item.method
+                ) +
+                "\n";
 
-    });
+        }
+    );
 
 
     downloadCSV(
@@ -1905,10 +2184,14 @@ function exportMappingCSV() {
 
 
     let keys =
-        Object.keys(mappings);
+        Object.keys(
+            mappings
+        );
 
 
-    if (keys.length === 0) {
+    if (
+        keys.length === 0
+    ) {
 
         alert(
             "登録データがありません"
@@ -1923,17 +2206,21 @@ function exportMappingCSV() {
         "ケースITF-14,バラ売りJAN\n";
 
 
-    keys.forEach(function(itf) {
+    keys.forEach(
+        function(itf) {
 
-        csv +=
-            csvEscape(itf) +
-            "," +
-            csvEscape(
-                mappings[itf]
-            ) +
-            "\n";
+            csv +=
+                csvEscape(
+                    itf
+                ) +
+                "," +
+                csvEscape(
+                    mappings[itf]
+                ) +
+                "\n";
 
-    });
+        }
+    );
 
 
     downloadCSV(
@@ -1980,7 +2267,9 @@ function importMappingCSV(event) {
 
 
             let lines =
-                text.split(/\r?\n/);
+                text.split(
+                    /\r?\n/
+                );
 
 
             let mappings =
@@ -1996,7 +2285,10 @@ function importMappingCSV(event) {
 
 
             lines.forEach(
-                function(line, index) {
+                function(
+                    line,
+                    index
+                ) {
 
                     if (
                         !line.trim()
@@ -2020,7 +2312,9 @@ function importMappingCSV(event) {
 
 
                     let parts =
-                        line.split(",");
+                        line.split(
+                            ","
+                        );
 
 
                     if (
