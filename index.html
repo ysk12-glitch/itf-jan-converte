@@ -2,316 +2,360 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>ITF-14 → JAN変換</title>
 
-<script src="https://unpkg.com/@zxing/library@0.21.3"></script>
+<script src="https://unpkg.com/html5-qrcode"></script>
 
 <style>
-* { box-sizing: border-box; }
+
 body {
-  margin: 0;
-  padding: 20px;
-  padding-bottom: 40px;
-  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-  background: #f5f5f7;
-  color: #222;
+    margin: 0;
+    padding: 20px;
+    background: #f5f5f5;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    text-align: center;
 }
-.container {
-  max-width: 560px;
-  margin: 0 auto;
-}
+
 h1 {
-  text-align: center;
-  font-size: 24px;
-  margin: 8px 0 20px;
+    font-size: 24px;
 }
-.card {
-  background: white;
-  border-radius: 18px;
-  padding: 16px;
-  box-shadow: 0 3px 15px rgba(0,0,0,.08);
-  margin-bottom: 16px;
+
+#reader {
+    width: 100%;
+    max-width: 500px;
+    margin: auto;
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
 }
-#video {
-  width: 100%;
-  display: block;
-  border-radius: 12px;
-  background: #111;
-  min-height: 240px;
-  object-fit: cover;
-}
-#status {
-  text-align: center;
-  margin: 12px 0 0;
-  font-size: 15px;
-  color: #555;
-}
+
 button {
-  width: 100%;
-  border: 0;
-  border-radius: 12px;
-  padding: 14px;
-  margin-top: 12px;
-  font-size: 17px;
-  font-weight: 600;
-  background: #111;
-  color: white;
+    width: 90%;
+    max-width: 500px;
+    padding: 15px;
+    margin: 10px auto;
+    border: none;
+    border-radius: 10px;
+    background: #222;
+    color: white;
+    font-size: 18px;
 }
-button:disabled {
-  opacity: .45;
-}
-.result-title {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 6px;
-}
+
 .result {
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  word-break: break-all;
+    max-width: 500px;
+    margin: 20px auto;
+    padding: 20px;
+    background: white;
+    border-radius: 15px;
 }
-.small {
-  font-size: 14px;
-  color: #666;
-  line-height: 1.6;
-  margin-top: 10px;
+
+.label {
+    color: #666;
+    margin-top: 10px;
 }
-.ok {
-  color: #16803c;
+
+.code {
+    font-size: 26px;
+    font-weight: bold;
+    word-break: break-all;
 }
+
+#status {
+    margin: 15px;
+}
+
+.success {
+    color: green;
+}
+
 .error {
-  color: #c62828;
+    color: red;
 }
-input {
-  width: 100%;
-  font-size: 20px;
-  padding: 12px;
-  border: 1px solid #ccc;
-  border-radius: 10px;
-}
+
 </style>
 </head>
 
 <body>
-<div class="container">
-  <h1>📦 ITF-14 → JAN変換</h1>
 
-  <div class="card">
-    <video id="video" playsinline muted></video>
-    <div id="status">カメラを起動しています…</div>
-    <button id="startButton">カメラを起動</button>
-    <button id="stopButton" disabled>カメラを停止</button>
-  </div>
+<h1>📦 ITF-14 → JAN変換</h1>
 
-  <div class="card">
-    <div class="result-title">読み取ったITF-14</div>
-    <div id="itfResult" class="result">---</div>
+<div id="reader"></div>
 
-    <div class="result-title" style="margin-top:18px;">JAN-13</div>
-    <div id="janResult" class="result">---</div>
+<div id="status">
+カメラを起動しています…
+</div>
 
-    <div id="message" class="small">
-      ITF-14を読み取ると、先頭の「0」を外してJAN-13に変換します。
-    </div>
-  </div>
+<div class="result">
 
-  <div class="card">
-    <div class="result-title">手入力でも確認できます</div>
-    <input id="manualInput" type="text" inputmode="numeric"
-           maxlength="14" placeholder="ITF-14（14桁）">
-    <button id="convertButton">JANに変換</button>
-  </div>
+<div class="label">
+読み取ったITF-14
+</div>
+
+<div id="itf" class="code">
+---
+</div>
+
+<div class="label">
+JAN-13
+</div>
+
+<div id="jan" class="code">
+---
+</div>
+
 </div>
 
 <script>
-const video = document.getElementById("video");
-const statusEl = document.getElementById("status");
-const itfResult = document.getElementById("itfResult");
-const janResult = document.getElementById("janResult");
-const message = document.getElementById("message");
-const startButton = document.getElementById("startButton");
-const stopButton = document.getElementById("stopButton");
-const manualInput = document.getElementById("manualInput");
-const convertButton = document.getElementById("convertButton");
 
-let codeReader = null;
-let scanning = false;
+let scanner = null;
 
-function setStatus(text, type = "") {
-  statusEl.textContent = text;
-  statusEl.className = type;
-}
 
-function checkDigit(body12) {
-  let sum = 0;
-  for (let i = 0; i < 12; i++) {
-    const n = Number(body12[i]);
-    sum += (i % 2 === 0) ? n * 3 : n;
-  }
-  return String((10 - (sum % 10)) % 10);
-}
+/* =========================
+   チェックデジット計算
+========================= */
 
-function convertITF14(raw) {
-  const code = String(raw).replace(/\D/g, "");
+function checkDigit(code) {
 
-  if (code.length !== 14) {
-    return {
-      ok: false,
-      error: "ITF-14は14桁として読み取る必要があります。"
-    };
-  }
+    let sum = 0;
 
-  const expected = checkDigit(code.slice(0, 13));
-  const actual = code[13];
+    for (let i = 0; i < 13; i++) {
 
-  if (expected !== actual) {
-    return {
-      ok: false,
-      error: "チェックデジットが一致しません。読み取りをもう一度試してください。"
-    };
-  }
+        let number = Number(code[i]);
 
-  // ITF-14 → JAN-13
-  // 日本の通常のケースでは、ITF-14の先頭0を外す。
-  if (code[0] !== "0") {
-    return {
-      ok: false,
-      error: "このITF-14は先頭が0ではありません。JAN-13への変換対象か確認してください。"
-    };
-  }
+        if (i % 2 === 0) {
 
-  const jan = code.slice(1);
-  return { ok: true, itf: code, jan };
-}
+            sum += number * 3;
 
-function showResult(raw) {
-  const result = convertITF14(raw);
+        } else {
 
-  if (!result.ok) {
-    message.textContent = result.error;
-    message.className = "small error";
-    return false;
-  }
+            sum += number;
 
-  itfResult.textContent = result.itf;
-  janResult.textContent = result.jan;
-  message.textContent = "✓ 正しいチェックデジットです。";
-  message.className = "small ok";
-  return true;
-}
+        }
 
-async function startCamera() {
-  if (scanning) return;
-
-  if (!window.isSecureContext) {
-    setStatus("HTTPSで開いてください。", "error");
-    return;
-  }
-
-  if (!window.ZXing) {
-    setStatus("バーコードライブラリを読み込めませんでした。", "error");
-    return;
-  }
-
-  try {
-    setStatus("カメラを起動しています…");
-
-    if (!codeReader) {
-      codeReader = new ZXing.BrowserMultiFormatReader();
     }
 
-    scanning = true;
-    startButton.disabled = true;
-    stopButton.disabled = false;
+    return (10 - (sum % 10)) % 10;
 
-    setStatus("バーコードをカメラに映してください。");
+}
 
-    // Safari/iPhoneでは背面カメラを優先
-    await codeReader.decodeFromConstraints(
-      {
-        audio: false,
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      },
-      video,
-      (result, error) => {
-        if (result) {
-          const text = result.getText().replace(/\D/g, "");
 
-          if (showResult(text)) {
-            setStatus("読み取り成功！", "ok");
+/* =========================
+   ITF-14 → JAN-13
+========================= */
 
-            // 成功したら一旦停止
-            stopCamera();
+function convertITF14(value) {
 
-            // iPhoneで結果が見やすいよう少し振動
-            if (navigator.vibrate) navigator.vibrate(100);
-          }
-        }
-      }
+    let code = value.replace(/\D/g, "");
+
+    console.log("読み取り:", code);
+
+    /*
+       ITF-14は14桁
+    */
+
+    if (code.length !== 14) {
+
+        document.getElementById("status").textContent =
+            "ITF-14を読み取り中…";
+
+        return;
+
+    }
+
+
+    /*
+       チェックデジット確認
+    */
+
+    let calculated =
+        checkDigit(code.substring(0, 13));
+
+    let actual =
+        Number(code.substring(13, 14));
+
+
+    if (calculated !== actual) {
+
+        document.getElementById("status").textContent =
+            "バーコードは読めましたが、チェックデジットが違います";
+
+        return;
+
+    }
+
+
+    /*
+       今回のITF-14
+
+       04514603362305
+
+       ↓
+
+       4514603362305
+    */
+
+    if (code.substring(0, 1) !== "0") {
+
+        document.getElementById("status").textContent =
+            "先頭が0ではないITF-14です";
+
+        return;
+
+    }
+
+
+    let jan =
+        code.substring(1);
+
+
+    document.getElementById("itf").textContent =
+        code;
+
+    document.getElementById("jan").textContent =
+        jan;
+
+    document.getElementById("status").textContent =
+        "✅ 読み取り成功！";
+
+    document.getElementById("status").className =
+        "success";
+
+
+    if (navigator.vibrate) {
+
+        navigator.vibrate(100);
+
+    }
+
+
+    /*
+       読み取り成功したら停止
+    */
+
+    if (scanner) {
+
+        scanner.stop().catch(function(error) {
+
+            console.log(error);
+
+        });
+
+    }
+
+}
+
+
+/* =========================
+   読み取り成功
+========================= */
+
+function onScanSuccess(decodedText, decodedResult) {
+
+    console.log(
+        "バーコード:",
+        decodedText
     );
-  } catch (e) {
-    scanning = false;
-    startButton.disabled = false;
-    stopButton.disabled = true;
 
-    console.error(e);
+    console.log(
+        "形式:",
+        decodedResult
+    );
 
-    if (e && e.name === "NotAllowedError") {
-      setStatus("カメラの使用が許可されていません。Safariの設定を確認してください。", "error");
-    } else if (e && e.name === "NotFoundError") {
-      setStatus("カメラが見つかりませんでした。", "error");
-    } else {
-      setStatus("カメラを起動できませんでした。ページを再読み込みして再試行してください。", "error");
-    }
-  }
+    convertITF14(decodedText);
+
 }
 
-function stopCamera() {
-  try {
-    if (codeReader) {
-      codeReader.reset();
-    }
-  } catch (e) {
-    console.log(e);
-  }
 
-  if (video.srcObject) {
-    video.srcObject.getTracks().forEach(track => track.stop());
-    video.srcObject = null;
-  }
+/* =========================
+   読み取り失敗
+========================= */
 
-  scanning = false;
-  startButton.disabled = false;
-  stopButton.disabled = true;
+function onScanFailure(error) {
+
+    /*
+       失敗するたびに表示すると
+       画面がちらつくので何もしない
+    */
+
 }
 
-startButton.addEventListener("click", startCamera);
-stopButton.addEventListener("click", stopCamera);
 
-convertButton.addEventListener("click", () => {
-  showResult(manualInput.value);
+/* =========================
+   スキャナー設定
+========================= */
+
+const formatsToSupport = [
+
+    Html5QrcodeSupportedFormats.ITF
+
+];
+
+
+scanner = new Html5Qrcode(
+    "reader",
+    {
+        formatsToSupport:
+            formatsToSupport
+    }
+);
+
+
+/* =========================
+   カメラ開始
+========================= */
+
+scanner.start(
+
+    {
+        facingMode: "environment"
+    },
+
+    {
+
+        fps: 10,
+
+        /*
+           ITFは横長なので
+           横長の読み取り枠にする
+        */
+
+        qrbox: {
+            width: 350,
+            height: 120
+        },
+
+        aspectRatio: 1.7777778,
+
+        disableFlip: false
+
+    },
+
+    onScanSuccess,
+
+    onScanFailure
+
+)
+.then(function() {
+
+    document.getElementById("status").textContent =
+        "📷 バーコードを枠の中に入れてください";
+
+})
+.catch(function(error) {
+
+    console.error(error);
+
+    document.getElementById("status").textContent =
+        "カメラを起動できませんでした。Safariのカメラ許可を確認してください。";
+
+    document.getElementById("status").className =
+        "error";
+
 });
 
-manualInput.addEventListener("input", () => {
-  manualInput.value = manualInput.value.replace(/\D/g, "").slice(0, 14);
-});
-
-manualInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") {
-    showResult(manualInput.value);
-  }
-});
-
-// 画面を離れたらカメラを停止
-document.addEventListener("visibilitychange", () => {
-  if (document.hidden) stopCamera();
-});
 </script>
+
 </body>
 </html>
