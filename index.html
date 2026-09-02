@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>ITF-14 → JAN変換</title>
 
 <script src="https://unpkg.com/@zxing/library@0.21.3"></script>
@@ -44,6 +45,10 @@ button {
     color: white;
 }
 
+#stopButton {
+    background: #666;
+}
+
 #status {
     margin: 15px;
     font-size: 16px;
@@ -54,6 +59,17 @@ button {
     padding: 15px;
     background: white;
     border-radius: 12px;
+}
+
+#code {
+    font-size: 28px;
+    letter-spacing: 2px;
+    word-break: break-all;
+}
+
+#janText {
+    margin-top: 10px;
+    font-size: 20px;
 }
 
 #barcode {
@@ -68,20 +84,28 @@ button {
 <h1>ITF-14 → JAN変換</h1>
 
 <div id="reader">
-    <video id="video" autoplay playsinline></video>
+    <video id="video" autoplay playsinline muted></video>
 </div>
 
 <button id="startButton">📷 カメラを起動</button>
 <button id="stopButton">⏹ カメラ停止</button>
 
-<div id="status">「カメラを起動」を押してください</div>
+<div id="status">
+    「カメラを起動」を押してください
+</div>
 
 <div id="result">
+
     <div>読み取り結果</div>
+
     <h2 id="code">---</h2>
+
     <div id="janText"></div>
+
     <svg id="barcode"></svg>
+
 </div>
+
 
 <script>
 
@@ -91,21 +115,25 @@ const code = document.getElementById("code");
 const janText = document.getElementById("janText");
 const barcode = document.getElementById("barcode");
 
+const startButton = document.getElementById("startButton");
+const stopButton = document.getElementById("stopButton");
+
 let stream = null;
 let reader = null;
 let scanning = false;
 
-const startButton = document.getElementById("startButton");
-const stopButton = document.getElementById("stopButton");
 
-
-// ==========================
+// ========================================
 // カメラ起動
-// ==========================
+// ========================================
 
 async function startCamera() {
 
     stopCamera();
+
+    code.textContent = "---";
+    janText.innerHTML = "";
+    barcode.innerHTML = "";
 
     status.textContent = "カメラを起動しています…";
 
@@ -114,15 +142,25 @@ async function startCamera() {
         if (!navigator.mediaDevices ||
             !navigator.mediaDevices.getUserMedia) {
 
-            throw new Error("この環境ではカメラを使用できません");
+            throw new Error("カメラが利用できません");
         }
 
         stream = await navigator.mediaDevices.getUserMedia({
+
             video: {
                 facingMode: {
                     ideal: "environment"
+                },
+
+                width: {
+                    ideal: 1920
+                },
+
+                height: {
+                    ideal: 1080
                 }
             },
+
             audio: false
         });
 
@@ -130,7 +168,8 @@ async function startCamera() {
 
         await video.play();
 
-        status.textContent = "バーコードをカメラに映してください";
+        status.textContent =
+            "ITF-14バーコードをカメラに映してください";
 
         startScanning();
 
@@ -140,30 +179,66 @@ async function startCamera() {
 
         status.textContent =
             "カメラを起動できませんでした。Safariのカメラ許可を確認してください。";
-
     }
 }
 
 
-// ==========================
+// ========================================
 // バーコード読み取り
-// ==========================
+// ========================================
 
 function startScanning() {
 
-    if (scanning) return;
+    if (scanning) {
+        return;
+    }
 
     scanning = true;
 
-    reader = new ZXing.BrowserMultiFormatReader();
+
+    // ITFを優先して読み取る設定
+    const hints = new Map();
+
+    hints.set(
+        ZXing.DecodeHintType.POSSIBLE_FORMATS,
+        [
+            ZXing.BarcodeFormat.ITF
+        ]
+    );
+
+
+    // 読み取り精度を上げる
+    hints.set(
+        ZXing.DecodeHintType.TRY_HARDER,
+        true
+    );
+
+
+    reader =
+        new ZXing.BrowserMultiFormatReader(
+            hints
+        );
+
 
     reader.decodeFromVideoElement(
         video,
-        (result, error) => {
+
+        function(result, error) {
+
+            if (!scanning) {
+                return;
+            }
+
 
             if (result) {
 
-                const text = result.getText();
+                const text =
+                    result.getText();
+
+                console.log(
+                    "読み取り結果:",
+                    text
+                );
 
                 handleBarcode(text);
             }
@@ -173,79 +248,74 @@ function startScanning() {
 }
 
 
-// ==========================
-// バーコード停止
-// ==========================
-
-function stopCamera() {
-
-    scanning = false;
-
-    if (reader) {
-
-        try {
-            reader.reset();
-        } catch (e) {}
-
-        reader = null;
-    }
-
-    if (stream) {
-
-        stream.getTracks().forEach(track => {
-            track.stop();
-        });
-
-        stream = null;
-    }
-
-    video.srcObject = null;
-}
-
-
-// ==========================
-// ITF-14 → JAN-13
-// ==========================
+// ========================================
+// ITF-14処理
+// ========================================
 
 function handleBarcode(value) {
 
+    // 数字以外を削除
     value = value.replace(/\D/g, "");
 
-    code.textContent = value;
 
-    // ITF-14
-    if (value.length === 14) {
+    console.log(
+        "認識した数字:",
+        value
+    );
 
-        /*
-         ITF-14
-         例：
-         14912345678905
 
-         JAN-13にする場合、
-         先頭の物流識別コードを除いた
-         13桁部分を使用
-        */
+    // 14桁以外の場合
+    if (value.length !== 14) {
 
-        const jan = value.substring(1);
+        code.textContent = value;
 
-        janText.innerHTML =
-            "<strong>JAN-13：</strong>" + jan;
-
-        drawBarcode(jan);
-
-        status.textContent = "読み取り成功！";
+        status.textContent =
+            "読み取り中… ITF-14を正面から映してください。";
 
         return;
     }
 
+
+    // ITF-14を表示
+    code.textContent = value;
+
+
+    // ====================================
+    // ITF-14 → JAN-13
+    // ====================================
+
+    const jan =
+        value.substring(1);
+
+
+    // JAN表示
+    janText.innerHTML =
+        "<strong>JAN-13：</strong><br>" +
+        "<span style='font-size:28px'>" +
+        jan +
+        "</span>";
+
+
+    // JANバーコードを表示
+    drawBarcode(jan);
+
+
     status.textContent =
-        "14桁のITF-14バーコードを読み取ってください。";
+        "✅ 読み取り成功！";
+
+
+    // 読み取り成功後はいったん停止
+    setTimeout(function() {
+
+        stopCamera();
+
+    }, 500);
 }
 
 
-// ==========================
+// ========================================
 // JANバーコード表示
-// ==========================
+// ========================================
 
 function drawBarcode(value) {
 
@@ -256,51 +326,113 @@ function drawBarcode(value) {
         return;
     }
 
-    JsBarcode("#barcode", value, {
-        format: "EAN13",
-        width: 2,
-        height: 100,
-        displayValue: true,
-        margin: 10
-    });
-}
 
-
-// ==========================
-// JsBarcode読み込み
-// ==========================
-
-function loadJsBarcode(value) {
-
-    const script = document.createElement("script");
-
-    script.src =
-        "https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js";
-
-    script.onload = function() {
-
-        JsBarcode("#barcode", value, {
+    JsBarcode(
+        "#barcode",
+        value,
+        {
             format: "EAN13",
             width: 2,
             height: 100,
             displayValue: true,
             margin: 10
-        });
+        }
+    );
+}
+
+
+// ========================================
+// JsBarcode読み込み
+// ========================================
+
+function loadJsBarcode(value) {
+
+    const script =
+        document.createElement("script");
+
+
+    script.src =
+        "https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js";
+
+
+    script.onload = function() {
+
+        JsBarcode(
+            "#barcode",
+            value,
+            {
+                format: "EAN13",
+                width: 2,
+                height: 100,
+                displayValue: true,
+                margin: 10
+            }
+        );
 
     };
+
+
+    script.onerror = function() {
+
+        console.error(
+            "JsBarcodeの読み込みに失敗しました"
+        );
+
+    };
+
 
     document.head.appendChild(script);
 }
 
 
-// ==========================
+// ========================================
+// カメラ停止
+// ========================================
+
+function stopCamera() {
+
+    scanning = false;
+
+
+    if (reader) {
+
+        try {
+            reader.reset();
+        } catch (e) {
+            console.log(e);
+        }
+
+        reader = null;
+    }
+
+
+    if (stream) {
+
+        stream
+            .getTracks()
+            .forEach(function(track) {
+
+                track.stop();
+
+            });
+
+        stream = null;
+    }
+
+
+    video.srcObject = null;
+}
+
+
+// ========================================
 // ボタン
-// ==========================
+// ========================================
 
 startButton.addEventListener(
     "click",
     startCamera
 );
+
 
 stopButton.addEventListener(
     "click",
@@ -315,7 +447,10 @@ stopButton.addEventListener(
 );
 
 
-// ページを離れるとき
+// ========================================
+// ページを離れたとき
+// ========================================
+
 window.addEventListener(
     "pagehide",
     stopCamera
