@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
 
 <title>ITF-14 → JAN変換</title>
 
@@ -36,7 +39,7 @@ button {
     width: 90%;
     max-width: 500px;
     padding: 15px;
-    margin: 8px auto;
+    margin: 7px auto;
     border: none;
     border-radius: 10px;
     background: #222;
@@ -56,6 +59,10 @@ button.red {
     background: #dc3545;
 }
 
+button.gray {
+    background: #6c757d;
+}
+
 input {
     width: 85%;
     max-width: 450px;
@@ -63,8 +70,9 @@ input {
     margin: 8px;
     border: 1px solid #ccc;
     border-radius: 10px;
-    font-size: 20px;
+    font-size: 18px;
     text-align: center;
+    box-sizing: border-box;
 }
 
 .result {
@@ -122,11 +130,6 @@ input {
     border-radius: 15px;
 }
 
-.menu {
-    max-width: 500px;
-    margin: 25px auto;
-}
-
 .section {
     max-width: 600px;
     margin: 25px auto;
@@ -141,12 +144,13 @@ input {
     font-size: 20px;
 }
 
-.list {
-    margin-top: 15px;
+.menu {
+    max-width: 500px;
+    margin: 25px auto;
 }
 
 .listItem {
-    padding: 12px 5px;
+    padding: 14px 5px;
     border-bottom: 1px solid #ddd;
     line-height: 1.6;
 }
@@ -167,7 +171,40 @@ input {
     padding: 15px;
 }
 
+.count {
+    text-align: center;
+    font-weight: bold;
+    margin: 10px;
+}
+
+.fileLabel {
+    display: block;
+    width: 90%;
+    max-width: 500px;
+    box-sizing: border-box;
+    padding: 15px;
+    margin: 7px auto;
+    border-radius: 10px;
+    background: #0d6efd;
+    color: white;
+    font-size: 17px;
+    cursor: pointer;
+}
+
+.fileLabel input {
+    display: none;
+}
+
+.deleteButton {
+    width: auto;
+    padding: 8px 12px;
+    margin: 5px 0 0 0;
+    font-size: 14px;
+    background: #dc3545;
+}
+
 </style>
+
 </head>
 
 
@@ -175,7 +212,9 @@ input {
 
 <h1>📦 ITF-14 → JAN変換</h1>
 
+
 <div id="reader"></div>
+
 
 <div id="status">
     📷 カメラを起動しています…
@@ -210,7 +249,8 @@ input {
 
     <h3>✅ 登録済みのバラJAN</h3>
 
-    <div id="registeredJan" class="code">
+    <div id="registeredJan"
+         class="code">
         ---
     </div>
 
@@ -221,7 +261,7 @@ input {
 </div>
 
 
-<!-- 登録 -->
+<!-- 新規登録 -->
 
 <div id="registerArea">
 
@@ -232,6 +272,7 @@ input {
         バラ売り用JANを入力してください。
     </p>
 
+
     <input
         id="unitJanInput"
         type="tel"
@@ -240,9 +281,14 @@ input {
         placeholder="JAN-13を入力"
     >
 
-    <button class="green" onclick="saveMapping()">
+
+    <button class="green"
+            onclick="saveMapping()">
+
         このITFに登録する
+
     </button>
+
 
     <p class="small">
         一度登録すると、次回から自動的に表示されます。
@@ -251,8 +297,10 @@ input {
 </div>
 
 
+<!-- 再スキャン -->
+
 <button onclick="restartScanner()">
-    📷 再スキャン
+    📷 もう一度スキャン
 </button>
 
 
@@ -260,31 +308,53 @@ input {
 
 <div class="menu">
 
-    <button class="blue" onclick="showHistory()">
-        📜 変換履歴を見る
+    <button class="blue"
+            onclick="showHistory()">
+
+        📜 変換履歴
+
     </button>
 
-    <button class="blue" onclick="showMappings()">
-        📋 登録データを見る
+
+    <button class="blue"
+            onclick="showMappings()">
+
+        📋 登録データ
+
     </button>
 
 </div>
 
 
-<!-- 変換履歴 -->
+<!-- 履歴 -->
 
-<div id="historySection" class="section" style="display:none;">
+<div id="historySection"
+     class="section"
+     style="display:none;">
 
     <h2>📜 変換履歴</h2>
 
-    <div id="historyList"></div>
+    <div id="historyCount"
+         class="count">
+    </div>
 
-    <button class="blue" onclick="exportHistoryCSV()">
-        📥 変換履歴をCSV出力
+    <div id="historyList">
+    </div>
+
+
+    <button class="blue"
+            onclick="exportHistoryCSV()">
+
+        📥 履歴をCSV出力
+
     </button>
 
-    <button class="red" onclick="clearHistory()">
-        🗑️ 変換履歴を削除
+
+    <button class="red"
+            onclick="clearHistory()">
+
+        🗑️ 履歴を全部削除
+
     </button>
 
 </div>
@@ -292,18 +362,64 @@ input {
 
 <!-- 登録データ -->
 
-<div id="mappingSection" class="section" style="display:none;">
+<div id="mappingSection"
+     class="section"
+     style="display:none;">
 
     <h2>📋 登録データ</h2>
 
-    <div id="mappingList"></div>
 
-    <button class="blue" onclick="exportMappingCSV()">
+    <div id="mappingCount"
+         class="count">
+    </div>
+
+
+    <input
+        id="mappingSearch"
+        type="tel"
+        inputmode="numeric"
+        placeholder="🔎 ITFまたはJANで検索"
+        oninput="showMappings()"
+    >
+
+
+    <div id="mappingList">
+    </div>
+
+
+    <button class="blue"
+            onclick="exportMappingCSV()">
+
         📥 登録データをCSV出力
+
     </button>
 
-    <button class="red" onclick="clearMappings()">
-        🗑️ 登録データを削除
+
+    <label class="fileLabel">
+
+        📤 CSVから一括登録
+
+        <input
+            type="file"
+            id="csvFile"
+            accept=".csv,text/csv"
+            onchange="importMappingCSV(event)"
+        >
+
+    </label>
+
+
+    <p class="small">
+        CSV形式：<br>
+        ケースITF-14,バラ売りJAN
+    </p>
+
+
+    <button class="red"
+            onclick="clearMappings()">
+
+        🗑️ 登録データを全部削除
+
     </button>
 
 </div>
@@ -311,31 +427,47 @@ input {
 
 <script>
 
+
+/* =====================================
+   スキャナー
+===================================== */
+
 let scanner = null;
+
+let isScanning = false;
 
 
 /* =====================================
-   チェックデジット計算
+   チェックデジット
 ===================================== */
 
 function calculateCheckDigit(code) {
 
     let sum = 0;
 
-    for (let i = code.length - 1; i >= 0; i--) {
+    for (let i = code.length - 1;
+         i >= 0;
+         i--) {
 
         let number = Number(code[i]);
 
-        let positionFromRight = code.length - i;
+        let positionFromRight =
+            code.length - i;
 
         if (positionFromRight % 2 === 1) {
+
             sum += number * 3;
+
         } else {
+
             sum += number;
+
         }
+
     }
 
     return (10 - (sum % 10)) % 10;
+
 }
 
 
@@ -346,13 +478,19 @@ function calculateCheckDigit(code) {
 function isValidJan(jan) {
 
     if (!/^\d{13}$/.test(jan)) {
+
         return false;
+
     }
 
     let calculated =
-        calculateCheckDigit(jan.substring(0, 12));
+        calculateCheckDigit(
+            jan.substring(0, 12)
+        );
 
-    return calculated === Number(jan.substring(12));
+    return calculated ===
+        Number(jan.substring(12));
+
 }
 
 
@@ -365,7 +503,9 @@ function getMappings() {
     try {
 
         return JSON.parse(
-            localStorage.getItem("caseToUnitJAN") || "{}"
+            localStorage.getItem(
+                "caseToUnitJAN"
+            ) || "{}"
         );
 
     } catch (error) {
@@ -373,6 +513,7 @@ function getMappings() {
         return {};
 
     }
+
 }
 
 
@@ -385,7 +526,9 @@ function getHistory() {
     try {
 
         return JSON.parse(
-            localStorage.getItem("conversionHistory") || "[]"
+            localStorage.getItem(
+                "conversionHistory"
+            ) || "[]"
         );
 
     } catch (error) {
@@ -393,26 +536,70 @@ function getHistory() {
         return [];
 
     }
+
 }
 
 
 /* =====================================
-   履歴保存
+   履歴追加
 ===================================== */
 
-function addHistory(itf, jan, method) {
+function addHistory(
+    itf,
+    jan,
+    method
+) {
 
-    let history = getHistory();
+    let history =
+        getHistory();
+
+
+    /*
+       同じITF・JANを短時間に
+       何度も登録しない
+    */
+
+    let now =
+        Date.now();
+
+
+    if (history.length > 0) {
+
+        let latest =
+            history[0];
+
+
+        if (
+            latest.itf === itf &&
+            latest.jan === jan &&
+            now - latest.timestamp < 5000
+        ) {
+
+            return;
+
+        }
+
+    }
+
 
     history.unshift({
 
-        date: new Date().toLocaleString("ja-JP"),
+        date:
+            new Date().toLocaleString(
+                "ja-JP"
+            ),
 
-        itf: itf,
+        timestamp:
+            now,
 
-        jan: jan,
+        itf:
+            itf,
 
-        method: method
+        jan:
+            jan,
+
+        method:
+            method
 
     });
 
@@ -426,29 +613,29 @@ function addHistory(itf, jan, method) {
 
 
 /* =====================================
-   ITF読み取り
+   ITF変換
 ===================================== */
 
 function convertITF14(value) {
 
-    let code = value.replace(/\D/g, "");
-
-    console.log("読み取り:", code);
+    let code =
+        value.replace(/\D/g, "");
 
 
     if (code.length !== 14) {
 
-        document.getElementById("status").textContent =
-            "ITF-14を読み取り中…";
-
         return;
+
     }
 
 
-    /* チェックデジット */
+    /* チェック */
 
     let calculated =
-        calculateCheckDigit(code.substring(0, 13));
+        calculateCheckDigit(
+            code.substring(0, 13)
+        );
+
 
     let actual =
         Number(code.substring(13));
@@ -456,52 +643,74 @@ function convertITF14(value) {
 
     if (calculated !== actual) {
 
-        document.getElementById("status").textContent =
+        document.getElementById(
+            "status"
+        ).textContent =
             "⚠️ チェックデジットが違います";
 
-        document.getElementById("status").className =
+        document.getElementById(
+            "status"
+        ).className =
             "error";
 
         return;
+
     }
 
 
-    document.getElementById("itf").textContent =
+    document.getElementById(
+        "itf"
+    ).textContent =
         code;
 
 
-    /* =================================
-       登録データを検索
-    ================================= */
+    /* 登録データ確認 */
 
-    let mappings = getMappings();
+    let mappings =
+        getMappings();
 
-    let registeredJan = mappings[code];
+
+    let registeredJan =
+        mappings[code];
 
 
     if (registeredJan) {
 
-        document.getElementById("jan").textContent =
+        document.getElementById(
+            "jan"
+        ).textContent =
             registeredJan;
 
-        document.getElementById("registeredJan").textContent =
+
+        document.getElementById(
+            "registeredJan"
+        ).textContent =
             registeredJan;
 
-        document.getElementById("registeredArea").style.display =
+
+        document.getElementById(
+            "registeredArea"
+        ).style.display =
             "block";
 
-        document.getElementById("registerArea").style.display =
+
+        document.getElementById(
+            "registerArea"
+        ).style.display =
             "none";
 
 
-        document.getElementById("status").textContent =
+        document.getElementById(
+            "status"
+        ).textContent =
             "✅ 登録済みのバラJANを表示しました！";
 
-        document.getElementById("status").className =
+
+        document.getElementById(
+            "status"
+        ).className =
             "success";
 
-
-        /* 履歴 */
 
         addHistory(
             code,
@@ -512,11 +721,10 @@ function convertITF14(value) {
 
         stopScanner();
 
-        if (navigator.vibrate) {
-            navigator.vibrate(100);
-        }
+        vibrate();
 
         return;
+
     }
 
 
@@ -528,39 +736,49 @@ function convertITF14(value) {
         code.substring(0, 1);
 
 
-    /* 1～8 */
-
     if (/^[1-8]$/.test(firstDigit)) {
 
         let body =
             code.substring(1, 13);
 
+
         let janCheck =
             calculateCheckDigit(body);
+
 
         let candidateJan =
             body + janCheck;
 
 
-        document.getElementById("jan").textContent =
+        document.getElementById(
+            "jan"
+        ).textContent =
             candidateJan;
 
 
-        document.getElementById("status").textContent =
+        document.getElementById(
+            "status"
+        ).textContent =
             "✅ バラJANを計算しました";
 
-        document.getElementById("status").className =
+
+        document.getElementById(
+            "status"
+        ).className =
             "success";
 
 
-        document.getElementById("registerArea").style.display =
+        document.getElementById(
+            "registerArea"
+        ).style.display =
             "none";
 
-        document.getElementById("registeredArea").style.display =
+
+        document.getElementById(
+            "registeredArea"
+        ).style.display =
             "none";
 
-
-        /* 履歴 */
 
         addHistory(
             code,
@@ -581,25 +799,35 @@ function convertITF14(value) {
             code.substring(1);
 
 
-        document.getElementById("jan").textContent =
+        document.getElementById(
+            "jan"
+        ).textContent =
             candidateJan;
 
 
-        document.getElementById("status").textContent =
+        document.getElementById(
+            "status"
+        ).textContent =
             "⚠️ ケース販売用JANの可能性があります";
 
-        document.getElementById("status").className =
+
+        document.getElementById(
+            "status"
+        ).className =
             "warning";
 
 
-        document.getElementById("registerArea").style.display =
+        document.getElementById(
+            "registerArea"
+        ).style.display =
             "block";
 
-        document.getElementById("registeredArea").style.display =
+
+        document.getElementById(
+            "registeredArea"
+        ).style.display =
             "none";
 
-
-        /* 仮の変換結果も履歴に保存 */
 
         addHistory(
             code,
@@ -612,20 +840,33 @@ function convertITF14(value) {
 
     else {
 
-        document.getElementById("jan").textContent =
+        document.getElementById(
+            "jan"
+        ).textContent =
             "---";
 
-        document.getElementById("status").textContent =
+
+        document.getElementById(
+            "status"
+        ).textContent =
             "⚠️ このITFは自動変換できません";
 
-        document.getElementById("status").className =
+
+        document.getElementById(
+            "status"
+        ).className =
             "warning";
 
 
-        document.getElementById("registerArea").style.display =
+        document.getElementById(
+            "registerArea"
+        ).style.display =
             "block";
 
-        document.getElementById("registeredArea").style.display =
+
+        document.getElementById(
+            "registeredArea"
+        ).style.display =
             "none";
 
     }
@@ -633,34 +874,53 @@ function convertITF14(value) {
 
     stopScanner();
 
+    vibrate();
+
+}
+
+
+/* =====================================
+   バイブレーション
+===================================== */
+
+function vibrate() {
 
     if (navigator.vibrate) {
+
         navigator.vibrate(100);
+
     }
 
 }
 
 
 /* =====================================
-   バラJAN登録
+   登録
 ===================================== */
 
 function saveMapping() {
 
     let jan =
-        document.getElementById("unitJanInput").value
+        document.getElementById(
+            "unitJanInput"
+        ).value
         .replace(/\D/g, "");
 
 
     let itf =
-        document.getElementById("itf").textContent;
+        document.getElementById(
+            "itf"
+        ).textContent;
 
 
     if (itf.length !== 14) {
 
-        alert("ITF-14がありません");
+        alert(
+            "ITF-14がありません"
+        );
 
         return;
+
     }
 
 
@@ -672,12 +932,16 @@ function saveMapping() {
         );
 
         return;
+
     }
 
 
-    let mappings = getMappings();
+    let mappings =
+        getMappings();
 
-    mappings[itf] = jan;
+
+    mappings[itf] =
+        jan;
 
 
     localStorage.setItem(
@@ -686,31 +950,46 @@ function saveMapping() {
     );
 
 
-    document.getElementById("jan").textContent =
+    document.getElementById(
+        "jan"
+    ).textContent =
         jan;
 
-    document.getElementById("registeredJan").textContent =
+
+    document.getElementById(
+        "registeredJan"
+    ).textContent =
         jan;
 
 
-    document.getElementById("registeredArea").style.display =
+    document.getElementById(
+        "registeredArea"
+    ).style.display =
         "block";
 
-    document.getElementById("registerArea").style.display =
+
+    document.getElementById(
+        "registerArea"
+    ).style.display =
         "none";
 
 
-    document.getElementById("status").textContent =
+    document.getElementById(
+        "status"
+    ).textContent =
         "✅ バラJANを登録しました！";
 
-    document.getElementById("status").className =
+
+    document.getElementById(
+        "status"
+    ).className =
         "success";
 
 
-    document.getElementById("unitJanInput").value = "";
+    document.getElementById(
+        "unitJanInput"
+    ).value = "";
 
-
-    /* 履歴 */
 
     addHistory(
         itf,
@@ -718,8 +997,6 @@ function saveMapping() {
         "新規登録"
     );
 
-
-    /* 登録一覧更新 */
 
     showMappings();
 
@@ -730,18 +1007,71 @@ function saveMapping() {
    スキャナー停止
 ===================================== */
 
-function stopScanner() {
+async function stopScanner() {
+
+    if (!scanner) {
+
+        return;
+
+    }
+
+
+    try {
+
+        if (isScanning) {
+
+            await scanner.stop();
+
+        }
+
+    } catch (error) {
+
+        console.log(
+            "stop:",
+            error
+        );
+
+    }
+
+
+    isScanning = false;
+
+}
+
+
+/* =====================================
+   スキャナー完全終了
+===================================== */
+
+async function destroyScanner() {
+
+    await stopScanner();
+
 
     if (scanner) {
 
-        scanner.stop()
-        .catch(function(error) {
+        try {
 
-            console.log(error);
+            await scanner.clear();
 
-        });
+        } catch (error) {
+
+            console.log(
+                "clear:",
+                error
+            );
+
+        }
 
     }
+
+
+    scanner = null;
+
+
+    document.getElementById(
+        "reader"
+    ).innerHTML = "";
 
 }
 
@@ -750,78 +1080,98 @@ function stopScanner() {
    スキャナー起動
 ===================================== */
 
-function startScanner() {
+async function startScanner() {
 
-    document.getElementById("status").textContent =
-        "📷 バーコードを枠の中に入れてください";
-
-    document.getElementById("status").className = "";
+    await destroyScanner();
 
 
-    document.getElementById("itf").textContent =
-        "---";
+    document.getElementById(
+        "status"
+    ).textContent =
+        "📷 カメラを起動しています…";
 
-    document.getElementById("jan").textContent =
-        "---";
 
-
-    document.getElementById("registerArea").style.display =
-        "none";
-
-    document.getElementById("registeredArea").style.display =
-        "none";
+    document.getElementById(
+        "status"
+    ).className = "";
 
 
     const formatsToSupport = [
+
         Html5QrcodeSupportedFormats.ITF
+
     ];
 
 
-    scanner = new Html5Qrcode(
-        "reader",
-        {
-            formatsToSupport:
-                formatsToSupport
-        }
-    );
+    scanner =
+        new Html5Qrcode(
+            "reader",
+            {
+                formatsToSupport:
+                    formatsToSupport
+            }
+        );
 
 
-    scanner.start(
+    try {
 
-        {
-            facingMode: "environment"
-        },
+        await scanner.start(
 
-        {
-            fps: 10,
-
-            qrbox: {
-                width: 350,
-                height: 120
+            {
+                facingMode:
+                    "environment"
             },
 
-            aspectRatio: 1.7777778,
+            {
 
-            disableFlip: false
-        },
+                fps: 10,
 
-        onScanSuccess,
+                qrbox: {
+                    width: 350,
+                    height: 120
+                },
 
-        onScanFailure
+                aspectRatio:
+                    1.7777778,
 
-    )
+                disableFlip:
+                    false
 
-    .catch(function(error) {
+            },
+
+            onScanSuccess,
+
+            onScanFailure
+
+        );
+
+
+        isScanning = true;
+
+
+        document.getElementById(
+            "status"
+        ).textContent =
+            "📷 バーコードを枠の中に入れてください";
+
+
+    } catch (error) {
 
         console.error(error);
 
-        document.getElementById("status").textContent =
+
+        document.getElementById(
+            "status"
+        ).textContent =
             "カメラを起動できませんでした。Safariのカメラ許可を確認してください。";
 
-        document.getElementById("status").className =
+
+        document.getElementById(
+            "status"
+        ).className =
             "error";
 
-    });
+    }
 
 }
 
@@ -835,12 +1185,19 @@ function onScanSuccess(
     decodedResult
 ) {
 
-    console.log(
-        "バーコード:",
+    if (!isScanning) {
+
+        return;
+
+    }
+
+
+    isScanning = false;
+
+
+    convertITF14(
         decodedText
     );
-
-    convertITF14(decodedText);
 
 }
 
@@ -851,7 +1208,7 @@ function onScanSuccess(
 
 function onScanFailure(error) {
 
-    // 読み取り失敗は通常なので何もしない
+    /* 通常の読み取り失敗なので何もしない */
 
 }
 
@@ -860,36 +1217,76 @@ function onScanFailure(error) {
    再スキャン
 ===================================== */
 
-function restartScanner() {
+async function restartScanner() {
 
-    stopScanner();
+    document.getElementById(
+        "status"
+    ).textContent =
+        "🔄 カメラを再起動しています…";
 
-    setTimeout(function() {
 
-        startScanner();
+    document.getElementById(
+        "status"
+    ).className = "";
 
-    }, 300);
+
+    document.getElementById(
+        "itf"
+    ).textContent =
+        "---";
+
+
+    document.getElementById(
+        "jan"
+    ).textContent =
+        "---";
+
+
+    document.getElementById(
+        "registerArea"
+    ).style.display =
+        "none";
+
+
+    document.getElementById(
+        "registeredArea"
+    ).style.display =
+        "none";
+
+
+    await startScanner();
 
 }
 
 
 /* =====================================
-   変換履歴表示
+   履歴表示
 ===================================== */
 
 function showHistory() {
 
-    let section =
-        document.getElementById("historySection");
-
-    section.style.display = "block";
+    document.getElementById(
+        "historySection"
+    ).style.display =
+        "block";
 
 
     let history =
         getHistory();
 
+
+    document.getElementById(
+        "historyCount"
+    ).textContent =
+        "履歴：" +
+        history.length +
+        "件";
+
+
     let list =
-        document.getElementById("historyList");
+        document.getElementById(
+            "historyList"
+        );
 
 
     if (history.length === 0) {
@@ -898,6 +1295,7 @@ function showHistory() {
             '<div class="empty">履歴はありません</div>';
 
         return;
+
     }
 
 
@@ -907,6 +1305,7 @@ function showHistory() {
     history.forEach(function(item) {
 
         html +=
+
             '<div class="listItem">' +
 
             '<strong>' +
@@ -931,7 +1330,8 @@ function showHistory() {
     });
 
 
-    list.innerHTML = html;
+    list.innerHTML =
+        html;
 
 }
 
@@ -942,39 +1342,76 @@ function showHistory() {
 
 function showMappings() {
 
-    let section =
-        document.getElementById("mappingSection");
-
-    section.style.display = "block";
+    document.getElementById(
+        "mappingSection"
+    ).style.display =
+        "block";
 
 
     let mappings =
         getMappings();
 
 
-    let list =
-        document.getElementById("mappingList");
-
-
     let keys =
         Object.keys(mappings);
 
 
-    if (keys.length === 0) {
+    document.getElementById(
+        "mappingCount"
+    ).textContent =
+        "登録：" +
+        keys.length +
+        "件";
+
+
+    let search =
+        document.getElementById(
+            "mappingSearch"
+        ).value
+        .replace(/\D/g, "");
+
+
+    let list =
+        document.getElementById(
+            "mappingList"
+        );
+
+
+    let filtered =
+        keys.filter(function(itf) {
+
+            if (!search) {
+
+                return true;
+
+            }
+
+
+            return (
+                itf.includes(search) ||
+                mappings[itf].includes(search)
+            );
+
+        });
+
+
+    if (filtered.length === 0) {
 
         list.innerHTML =
-            '<div class="empty">登録データはありません</div>';
+            '<div class="empty">該当する登録データはありません</div>';
 
         return;
+
     }
 
 
     let html = "";
 
 
-    keys.forEach(function(itf) {
+    filtered.forEach(function(itf) {
 
         html +=
+
             '<div class="listItem">' +
 
             'ケースITF：<strong>' +
@@ -983,25 +1420,73 @@ function showMappings() {
 
             'バラJAN：<strong>' +
             mappings[itf] +
-            '</strong>' +
+            '</strong><br>' +
+
+            '<button class="deleteButton" ' +
+            'onclick="deleteMapping(\'' +
+            itf +
+            '\')">' +
+
+            'この登録を削除' +
+
+            '</button>' +
 
             '</div>';
 
     });
 
 
-    list.innerHTML = html;
+    list.innerHTML =
+        html;
 
 }
 
 
 /* =====================================
-   CSV用エスケープ
+   1件削除
+===================================== */
+
+function deleteMapping(itf) {
+
+    if (
+        !confirm(
+            "この登録を削除しますか？\n\n" +
+            itf
+        )
+    ) {
+
+        return;
+
+    }
+
+
+    let mappings =
+        getMappings();
+
+
+    delete mappings[itf];
+
+
+    localStorage.setItem(
+        "caseToUnitJAN",
+        JSON.stringify(mappings)
+    );
+
+
+    showMappings();
+
+}
+
+
+/* =====================================
+   CSVエスケープ
 ===================================== */
 
 function csvEscape(value) {
 
-    value = String(value);
+    value =
+        String(value);
+
 
     if (
         value.includes(",") ||
@@ -1010,10 +1495,14 @@ function csvEscape(value) {
     ) {
 
         return '"' +
-            value.replace(/"/g, '""') +
+            value.replace(
+                /"/g,
+                '""'
+            ) +
             '"';
 
     }
+
 
     return value;
 
@@ -1021,20 +1510,24 @@ function csvEscape(value) {
 
 
 /* =====================================
-   CSVファイル作成
+   CSVダウンロード
 ===================================== */
 
-function downloadCSV(csv, filename) {
+function downloadCSV(
+    csv,
+    filename
+) {
 
-    /* Excelで文字化けしにくいようBOMを付ける */
+    let bom =
+        "\uFEFF";
 
-    let bom = "\uFEFF";
 
     let blob =
         new Blob(
             [bom + csv],
             {
-                type: "text/csv;charset=utf-8;"
+                type:
+                    "text/csv;charset=utf-8;"
             }
         );
 
@@ -1044,25 +1537,41 @@ function downloadCSV(csv, filename) {
 
 
     let link =
-        document.createElement("a");
+        document.createElement(
+            "a"
+        );
 
-    link.href = url;
 
-    link.download = filename;
+    link.href =
+        url;
 
-    document.body.appendChild(link);
+
+    link.download =
+        filename;
+
+
+    document.body.appendChild(
+        link
+    );
+
 
     link.click();
 
-    document.body.removeChild(link);
 
-    URL.revokeObjectURL(url);
+    document.body.removeChild(
+        link
+    );
+
+
+    URL.revokeObjectURL(
+        url
+    );
 
 }
 
 
 /* =====================================
-   変換履歴CSV
+   履歴CSV
 ===================================== */
 
 function exportHistoryCSV() {
@@ -1073,9 +1582,12 @@ function exportHistoryCSV() {
 
     if (history.length === 0) {
 
-        alert("変換履歴がありません");
+        alert(
+            "変換履歴がありません"
+        );
 
         return;
+
     }
 
 
@@ -1086,9 +1598,12 @@ function exportHistoryCSV() {
     history.forEach(function(item) {
 
         csv +=
-            csvEscape(item.date) + "," +
-            csvEscape(item.itf) + "," +
-            csvEscape(item.jan) + "," +
+            csvEscape(item.date) +
+            "," +
+            csvEscape(item.itf) +
+            "," +
+            csvEscape(item.jan) +
+            "," +
             csvEscape(item.method) +
             "\n";
 
@@ -1119,9 +1634,12 @@ function exportMappingCSV() {
 
     if (keys.length === 0) {
 
-        alert("登録データがありません");
+        alert(
+            "登録データがありません"
+        );
 
         return;
+
     }
 
 
@@ -1132,8 +1650,11 @@ function exportMappingCSV() {
     keys.forEach(function(itf) {
 
         csv +=
-            csvEscape(itf) + "," +
-            csvEscape(mappings[itf]) +
+            csvEscape(itf) +
+            "," +
+            csvEscape(
+                mappings[itf]
+            ) +
             "\n";
 
     });
@@ -1142,6 +1663,176 @@ function exportMappingCSV() {
     downloadCSV(
         csv,
         "ITF_JAN_登録データ.csv"
+    );
+
+}
+
+
+/* =====================================
+   CSV一括登録
+===================================== */
+
+function importMappingCSV(event) {
+
+    let file =
+        event.target.files[0];
+
+
+    if (!file) {
+
+        return;
+
+    }
+
+
+    let reader =
+        new FileReader();
+
+
+    reader.onload =
+        function(e) {
+
+            let text =
+                e.target.result;
+
+
+            /*
+               BOM除去
+            */
+
+            text =
+                text.replace(
+                    /^\uFEFF/,
+                    ""
+                );
+
+
+            let lines =
+                text.split(/\r?\n/);
+
+
+            let mappings =
+                getMappings();
+
+
+            let successCount =
+                0;
+
+
+            let errorCount =
+                0;
+
+
+            lines.forEach(
+                function(line, index) {
+
+                    if (
+                        !line.trim()
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    /*
+                       ヘッダーを飛ばす
+                    */
+
+                    if (
+                        index === 0 &&
+                        line.includes(
+                            "ITF"
+                        )
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    let parts =
+                        line.split(",");
+
+
+                    if (
+                        parts.length < 2
+                    ) {
+
+                        errorCount++;
+
+                        return;
+
+                    }
+
+
+                    let itf =
+                        parts[0]
+                        .replace(
+                            /\D/g,
+                            ""
+                        );
+
+
+                    let jan =
+                        parts[1]
+                        .replace(
+                            /\D/g,
+                            ""
+                        );
+
+
+                    if (
+                        itf.length === 14 &&
+                        isValidJan(jan)
+                    ) {
+
+                        mappings[itf] =
+                            jan;
+
+                        successCount++;
+
+                    } else {
+
+                        errorCount++;
+
+                    }
+
+                }
+            );
+
+
+            localStorage.setItem(
+                "caseToUnitJAN",
+                JSON.stringify(
+                    mappings
+                )
+            );
+
+
+            alert(
+                "CSV登録完了！\n\n" +
+                "登録：" +
+                successCount +
+                "件\n" +
+                "エラー：" +
+                errorCount +
+                "件"
+            );
+
+
+            event.target.value =
+                "";
+
+
+            showMappings();
+
+        };
+
+
+    reader.readAsText(
+        file,
+        "UTF-8"
     );
 
 }
@@ -1160,6 +1851,7 @@ function clearHistory() {
     ) {
 
         return;
+
     }
 
 
@@ -1174,7 +1866,7 @@ function clearHistory() {
 
 
 /* =====================================
-   登録データ削除
+   登録データ全削除
 ===================================== */
 
 function clearMappings() {
@@ -1186,6 +1878,7 @@ function clearMappings() {
     ) {
 
         return;
+
     }
 
 
