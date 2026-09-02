@@ -37,6 +37,17 @@ h1 {
     overflow: hidden;
 }
 
+/* フラッシュボタン */
+
+#flashButton {
+    background: #343a40;
+}
+
+#flashButton.flashOn {
+    background: #ffc107;
+    color: #222;
+}
+
 button {
     width: 90%;
     max-width: 500px;
@@ -240,6 +251,13 @@ button.gray {
     background: #dc3545;
 }
 
+/* 閉じるボタン */
+
+.closeButton {
+    background: #6c757d;
+    margin-top: 10px;
+}
+
 </style>
 
 </head>
@@ -250,7 +268,21 @@ button.gray {
 <h1>📦 ITF-14 → JAN変換</h1>
 
 
+<!-- ================================
+     カメラスキャン
+================================ -->
+
 <div id="reader"></div>
+
+
+<!-- フラッシュ -->
+
+<button id="flashButton"
+        onclick="toggleFlash()">
+
+    🔦 フラッシュ OFF
+
+</button>
 
 
 <div id="status">
@@ -372,7 +404,9 @@ button.gray {
 <!-- 再スキャン -->
 
 <button onclick="restartScanner()">
+
     📷 もう一度ITFをスキャン
+
 </button>
 
 
@@ -398,7 +432,9 @@ button.gray {
 </div>
 
 
-<!-- 履歴 -->
+<!-- ================================
+     履歴
+================================ -->
 
 <div id="historySection"
      class="section"
@@ -429,10 +465,22 @@ button.gray {
 
     </button>
 
+
+    <!-- ★追加 -->
+
+    <button class="closeButton"
+            onclick="closeHistory()">
+
+        ✖️ 履歴を閉じる
+
+    </button>
+
 </div>
 
 
-<!-- 登録データ -->
+<!-- ================================
+     登録データ
+================================ -->
 
 <div id="mappingSection"
      class="section"
@@ -494,6 +542,16 @@ button.gray {
 
     </button>
 
+
+    <!-- ★追加 -->
+
+    <button class="closeButton"
+            onclick="closeMappings()">
+
+        ✖️ 登録データを閉じる
+
+    </button>
+
 </div>
 
 
@@ -507,6 +565,134 @@ button.gray {
 let scanner = null;
 
 let isScanning = false;
+
+
+/* =====================================
+   フラッシュ
+===================================== */
+
+let flashOn = false;
+
+
+/* =====================================
+   フラッシュON/OFF
+===================================== */
+
+async function toggleFlash() {
+
+    if (!scanner || !isScanning) {
+
+        alert(
+            "カメラが起動していません。"
+        );
+
+        return;
+
+    }
+
+
+    try {
+
+        flashOn = !flashOn;
+
+
+        await scanner.applyVideoConstraints({
+
+            advanced: [
+
+                {
+                    torch: flashOn
+                }
+
+            ]
+
+        });
+
+
+        const button =
+            document.getElementById(
+                "flashButton"
+            );
+
+
+        if (flashOn) {
+
+            button.textContent =
+                "🔦 フラッシュ ON";
+
+            button.classList.add(
+                "flashOn"
+            );
+
+        } else {
+
+            button.textContent =
+                "🔦 フラッシュ OFF";
+
+            button.classList.remove(
+                "flashOn"
+            );
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "フラッシュ操作エラー:",
+            error
+        );
+
+
+        flashOn = false;
+
+
+        document.getElementById(
+            "flashButton"
+        ).textContent =
+            "🔦 フラッシュ OFF";
+
+
+        document.getElementById(
+            "flashButton"
+        ).classList.remove(
+            "flashOn"
+        );
+
+
+        alert(
+            "この端末・ブラウザではフラッシュ操作に対応していない可能性があります。"
+        );
+
+    }
+
+}
+
+
+/* =====================================
+   フラッシュ表示リセット
+===================================== */
+
+function resetFlashButton() {
+
+    flashOn = false;
+
+
+    const button =
+        document.getElementById(
+            "flashButton"
+        );
+
+
+    button.textContent =
+        "🔦 フラッシュ OFF";
+
+
+    button.classList.remove(
+        "flashOn"
+    );
+
+}
 
 
 /* =====================================
@@ -570,11 +756,6 @@ function showJanBarcode(jan) {
             "block";
 
 
-        /*
-         * バーコードが表示されたら
-         * すぐそこへ移動
-         */
-
         area.scrollIntoView({
 
             behavior: "smooth",
@@ -625,12 +806,9 @@ function hideJanBarcode() {
 
 function showSuccessMessage() {
 
-    const message =
-        document.getElementById(
-            "successMessage"
-        );
-
-    message.style.display =
+    document.getElementById(
+        "successMessage"
+    ).style.display =
         "block";
 
 }
@@ -658,6 +836,7 @@ function calculateCheckDigit(code) {
 
     let sum = 0;
 
+
     for (
         let i = code.length - 1;
         i >= 0;
@@ -667,8 +846,10 @@ function calculateCheckDigit(code) {
         let number =
             Number(code[i]);
 
+
         let positionFromRight =
             code.length - i;
+
 
         if (
             positionFromRight % 2 === 1
@@ -685,6 +866,7 @@ function calculateCheckDigit(code) {
         }
 
     }
+
 
     return (
         10 -
@@ -934,16 +1116,8 @@ function convertITF14(value) {
         code;
 
 
-    /*
-       読み取り成功！
-    */
-
     showSuccessMessage();
 
-
-    /*
-       登録済みデータ
-    */
 
     let mappings =
         getMappings();
@@ -1011,11 +1185,6 @@ function convertITF14(value) {
 
     }
 
-
-    /*
-       先頭1～8
-       自動変換
-    */
 
     let firstDigit =
         code.substring(
@@ -1091,10 +1260,6 @@ function convertITF14(value) {
 
     }
 
-
-    /*
-       先頭0
-    */
 
     else if (
         firstDigit === "0"
@@ -1178,6 +1343,8 @@ function convertITF14(value) {
 
     stopScanner();
 
+    resetFlashButton();
+
     vibrate();
 
 }
@@ -1239,6 +1406,9 @@ async function startJanScanner() {
         "status"
     ).className =
         "";
+
+
+    resetFlashButton();
 
 
     scanner =
@@ -1505,6 +1675,8 @@ async function saveMappingFromScan(
     );
 
 
+    resetFlashButton();
+
     vibrate();
 
 
@@ -1544,6 +1716,9 @@ async function cancelJanScanner() {
         "status"
     ).className =
         "";
+
+
+    resetFlashButton();
 
 
     await startScanner();
@@ -1599,6 +1774,9 @@ async function destroyScanner() {
     await stopScanner();
 
 
+    resetFlashButton();
+
+
     if (scanner) {
 
         try {
@@ -1636,6 +1814,9 @@ async function destroyScanner() {
 async function startScanner() {
 
     await destroyScanner();
+
+
+    resetFlashButton();
 
 
     document.getElementById(
@@ -1838,6 +2019,22 @@ async function restartScanner() {
 
     await startScanner();
 
+
+    /*
+     * ★追加
+     * カメラスキャン画面まで移動
+     */
+
+    document.getElementById(
+        "reader"
+    ).scrollIntoView({
+
+        behavior: "smooth",
+
+        block: "start"
+
+    });
+
 }
 
 
@@ -1846,6 +2043,12 @@ async function restartScanner() {
 ===================================== */
 
 function showHistory() {
+
+    document.getElementById(
+        "mappingSection"
+    ).style.display =
+        "none";
+
 
     document.getElementById(
         "historySection"
@@ -1924,10 +2127,30 @@ function showHistory() {
 
 
 /* =====================================
+   履歴を閉じる
+===================================== */
+
+function closeHistory() {
+
+    document.getElementById(
+        "historySection"
+    ).style.display =
+        "none";
+
+}
+
+
+/* =====================================
    登録データ表示
 ===================================== */
 
 function showMappings() {
+
+    document.getElementById(
+        "historySection"
+    ).style.display =
+        "none";
+
 
     document.getElementById(
         "mappingSection"
@@ -2043,6 +2266,20 @@ function showMappings() {
 
     list.innerHTML =
         html;
+
+}
+
+
+/* =====================================
+   登録データを閉じる
+===================================== */
+
+function closeMappings() {
+
+    document.getElementById(
+        "mappingSection"
+    ).style.display =
+        "none";
 
 }
 
