@@ -33,6 +33,8 @@ button.green{background:#198754} button.blue{background:#0d6efd} button.red{back
 .fileLabel input{display:none}.deleteButton{width:auto;padding:8px 12px;margin:5px 0 0;font-size:14px;background:#dc3545}
 .closeButton{background:#6c757d;margin-top:10px}
 #mappingSearch{width:100%;box-sizing:border-box;padding:12px;border:1px solid #ccc;border-radius:8px;font-size:16px}
+#manualLinkArea{display:none;max-width:500px;margin:15px auto;padding:15px;background:#fff3cd;border:2px solid #ffc107;border-radius:12px}
+#manualLinkArea h3{margin-top:0}
 </style>
 </head>
 
@@ -61,10 +63,21 @@ button.green{background:#198754} button.blue{background:#0d6efd} button.red{back
     </div>
 </div>
 
+<!-- ★今回追加：自動変換後に、その場でバラJANへ連携するボタン -->
+<div id="manualLinkArea">
+    <h3>🔗 バラJANを手動で連携</h3>
+    <p class="small">
+        自動変換されたJANがケースJANだった場合などは、<br>
+        実際のバラ商品のJANを読み取って、このITFに登録できます。
+    </p>
+    <button class="green" onclick="startManualJanLink()">📷 バラJANを読み取って連携</button>
+</div>
+
 <div id="registeredArea">
     <h3>✅ 登録済みのバラJAN</h3>
     <div id="registeredJan" class="code">---</div>
     <p class="small">このケースITFとバラ売りJANの対応を登録しています。</p>
+    <button class="green" onclick="startManualJanLink()">🔄 バラJANを変更する</button>
 </div>
 
 <div id="registerArea">
@@ -115,6 +128,7 @@ let scanner = null;
 let isScanning = false;
 let flashOn = false;
 let scannerStarting = false;
+let manualLinkMode = false;
 
 function setStatus(text, cls=""){
     const el=document.getElementById("status");
@@ -203,6 +217,13 @@ function hideSuccessMessage(){document.getElementById("successMessage").style.di
 function displayJan(jan){document.getElementById("jan").textContent=jan;showJanBarcode(jan)}
 function vibrate(){if(navigator.vibrate)navigator.vibrate(100)}
 
+function hideAllLinkAreas(){
+    document.getElementById("manualLinkArea").style.display="none";
+    document.getElementById("registeredArea").style.display="none";
+    document.getElementById("registerArea").style.display="none";
+    document.getElementById("janScanArea").style.display="none";
+}
+
 function convertITF14(value){
     const code=value.replace(/\D/g,"");
     if(code.length!==14){
@@ -218,6 +239,7 @@ function convertITF14(value){
 
     document.getElementById("itf").textContent=code;
     showSuccessMessage();
+    manualLinkMode=false;
 
     const mappings=getMappings();
     const registeredJan=mappings[code];
@@ -228,6 +250,7 @@ function convertITF14(value){
         document.getElementById("registeredArea").style.display="block";
         document.getElementById("registerArea").style.display="none";
         document.getElementById("janScanArea").style.display="none";
+        document.getElementById("manualLinkArea").style.display="none";
         setStatus("✅ 登録済みのバラJANを表示しました！","success");
         addHistory(code,registeredJan,"登録データ");
         stopScanner();
@@ -242,21 +265,32 @@ function convertITF14(value){
         const body=code.substring(1,13);
         const candidateJan=body+calculateCheckDigit(body);
         displayJan(candidateJan);
+
         setStatus("✅ バラJANを自動計算しました！","success");
-        document.getElementById("registerArea").style.display="none";
+
+        /*
+         * ★重要
+         * 自動変換されたJANでも、ケースJANのままの場合があるため、
+         * ここで「バラJANを登録・変更」ボタンを表示する。
+         */
+        document.getElementById("manualLinkArea").style.display="block";
         document.getElementById("registeredArea").style.display="none";
+        document.getElementById("registerArea").style.display="none";
         document.getElementById("janScanArea").style.display="none";
+
         addHistory(code,candidateJan,"自動変換");
     }else if(firstDigit==="0"){
         displayJan("---");
         setStatus("⚠️ バラJANを確認してください","warning");
         document.getElementById("registerArea").style.display="block";
+        document.getElementById("manualLinkArea").style.display="none";
         document.getElementById("registeredArea").style.display="none";
         document.getElementById("janScanArea").style.display="none";
     }else{
         displayJan("---");
         setStatus("⚠️ このITFは自動変換できません","warning");
         document.getElementById("registerArea").style.display="block";
+        document.getElementById("manualLinkArea").style.display="none";
         document.getElementById("registeredArea").style.display="none";
         document.getElementById("janScanArea").style.display="none";
     }
@@ -273,7 +307,6 @@ async function stopScanner(){
         return;
     }
     try{
-        /* ★重要：isScanningがfalseでも必ずstopする */
         await scanner.stop();
     }catch(error){
         console.log("stop:",error);
@@ -341,14 +374,39 @@ function onScanSuccess(decodedText){
 }
 function onScanFailure(){}
 
+/*
+ * ★新機能
+ * 自動変換されたJANを、実際のバラJANへその場で連携する。
+ */
+async function startManualJanLink(){
+    const itf=document.getElementById("itf").textContent;
+    if(!/^\d{14}$/.test(itf)){
+        alert("先にITF-14を読み取ってください。");
+        return;
+    }
+
+    manualLinkMode=true;
+    await startJanScanner();
+}
+
 async function startJanScanner(){
     await destroyScanner();
 
     document.getElementById("janScanArea").style.display="block";
     document.getElementById("registerArea").style.display="none";
     document.getElementById("registeredArea").style.display="none";
-    setStatus("📷 バラ商品のJANを読み取ってください");
+    document.getElementById("manualLinkArea").style.display="none";
+
+    setStatus(manualLinkMode
+        ?"📷 実際のバラ商品のJANを読み取ってください"
+        :"📷 バラ商品のJANを読み取ってください"
+    );
     resetFlashButton();
+
+    if(!window.Html5Qrcode){
+        setStatus("❌ カメラ機能の読み込みに失敗しました。ページを更新してください。","error");
+        return;
+    }
 
     scanner=makeScanner([Html5QrcodeSupportedFormats.EAN_13]);
     scannerStarting=true;
@@ -375,23 +433,29 @@ async function startJanScanner(){
 
 function onJanScanSuccess(decodedText){
     if(!isScanning || scannerStarting)return;
+
     const jan=decodedText.replace(/\D/g,"");
+
     if(!isValidJan(jan)){
         setStatus("⚠️ JANのチェックデジットが違います。もう一度読み取ってください。","error");
         return;
     }
+
     isScanning=false;
     saveMappingFromScan(jan);
 }
+
 function onJanScanFailure(){}
 
 async function saveMappingFromScan(jan){
     const itf=document.getElementById("itf").textContent;
+
     if(!/^\d{14}$/.test(itf)){
         alert("ITF-14がありません。");
         await restartScanner();
         return;
     }
+
     if(!isValidJan(jan)){
         alert("JAN-13が正しくありません。");
         isScanning=true;
@@ -401,26 +465,60 @@ async function saveMappingFromScan(jan){
     await stopScanner();
 
     const mappings=getMappings();
+    const oldJan=mappings[itf];
+
     mappings[itf]=jan;
     localStorage.setItem("caseToUnitJAN",JSON.stringify(mappings));
 
     displayJan(jan);
     showSuccessMessage();
+
     document.getElementById("registeredJan").textContent=jan;
     document.getElementById("registeredArea").style.display="block";
     document.getElementById("registerArea").style.display="none";
     document.getElementById("janScanArea").style.display="none";
-    setStatus("✅ バラJANを読み取って登録しました！","success");
-    addHistory(itf,jan,"JAN読み取り登録");
+    document.getElementById("manualLinkArea").style.display="none";
+
+    setStatus(
+        oldJan
+        ?"✅ バラJANを変更して登録しました！"
+        :"✅ バラJANを読み取って登録しました！",
+        "success"
+    );
+
+    addHistory(
+        itf,
+        jan,
+        oldJan ? "バラJAN変更登録" : "JAN読み取り登録"
+    );
+
     resetFlashButton();
     vibrate();
+    manualLinkMode=false;
+
     showMappings();
 }
 
 async function cancelJanScanner(){
     await destroyScanner();
+
     document.getElementById("janScanArea").style.display="none";
-    document.getElementById("registerArea").style.display="block";
+
+    const itf=document.getElementById("itf").textContent;
+    const mappings=getMappings();
+
+    if(/^\d{14}$/.test(itf) && mappings[itf]){
+        document.getElementById("registeredJan").textContent=mappings[itf];
+        document.getElementById("registeredArea").style.display="block";
+        document.getElementById("manualLinkArea").style.display="none";
+        document.getElementById("registerArea").style.display="none";
+    }else{
+        document.getElementById("registerArea").style.display="block";
+        document.getElementById("manualLinkArea").style.display="block";
+        document.getElementById("registeredArea").style.display="none";
+    }
+
+    manualLinkMode=false;
     setStatus("📦 ITF読み取りに戻りました");
     await startScanner();
 }
@@ -429,11 +527,16 @@ async function restartScanner(){
     await destroyScanner();
     hideSuccessMessage();
     hideJanBarcode();
+
     document.getElementById("itf").textContent="---";
     document.getElementById("jan").textContent="---";
     document.getElementById("registerArea").style.display="none";
     document.getElementById("registeredArea").style.display="none";
+    document.getElementById("manualLinkArea").style.display="none";
     document.getElementById("janScanArea").style.display="none";
+
+    manualLinkMode=false;
+
     setStatus("🔄 カメラを再起動しています…");
     await startScanner();
     document.getElementById("reader").scrollIntoView({behavior:"smooth",block:"start"});
@@ -442,38 +545,79 @@ async function restartScanner(){
 function showHistory(){
     document.getElementById("mappingSection").style.display="none";
     document.getElementById("historySection").style.display="block";
+
     const history=getHistory();
     document.getElementById("historyCount").textContent="履歴："+history.length+"件";
+
     const list=document.getElementById("historyList");
-    if(!history.length){list.innerHTML='<div class="empty">履歴はありません</div>';return}
-    list.innerHTML=history.map(item=>'<div class="listItem"><strong>'+item.date+'</strong><br>ITF-14：'+item.itf+'<br>JAN：'+item.jan+'<br><span class="small">方法：'+item.method+'</span></div>').join("");
+
+    if(!history.length){
+        list.innerHTML='<div class="empty">履歴はありません</div>';
+        return;
+    }
+
+    list.innerHTML=history.map(item=>
+        '<div class="listItem"><strong>'+item.date+'</strong><br>'+
+        'ITF-14：'+item.itf+'<br>'+
+        'JAN：'+item.jan+'<br>'+
+        '<span class="small">方法：'+item.method+'</span></div>'
+    ).join("");
 }
-function closeHistory(){document.getElementById("historySection").style.display="none"}
+
+function closeHistory(){
+    document.getElementById("historySection").style.display="none";
+}
 
 function showMappings(){
     document.getElementById("historySection").style.display="none";
     document.getElementById("mappingSection").style.display="block";
+
     const mappings=getMappings();
     const keys=Object.keys(mappings);
+
     document.getElementById("mappingCount").textContent="登録："+keys.length+"件";
+
     const search=document.getElementById("mappingSearch").value.replace(/\D/g,"");
-    const filtered=keys.filter(itf=>!search||itf.includes(search)||mappings[itf].includes(search));
+    const filtered=keys.filter(itf=>
+        !search ||
+        itf.includes(search) ||
+        mappings[itf].includes(search)
+    );
+
     const list=document.getElementById("mappingList");
-    if(!filtered.length){list.innerHTML='<div class="empty">該当する登録データはありません</div>';return}
-    list.innerHTML=filtered.map(itf=>'<div class="listItem">ケースITF：<strong>'+itf+'</strong><br>バラJAN：<strong>'+mappings[itf]+'</strong><br><button class="deleteButton" onclick="deleteMapping(\''+itf+'\')">この登録を削除</button></div>').join("");
+
+    if(!filtered.length){
+        list.innerHTML='<div class="empty">該当する登録データはありません</div>';
+        return;
+    }
+
+    list.innerHTML=filtered.map(itf=>
+        '<div class="listItem">ケースITF：<strong>'+itf+'</strong><br>'+
+        'バラJAN：<strong>'+mappings[itf]+'</strong><br>'+
+        '<button class="deleteButton" onclick="deleteMapping(\''+itf+'\')">この登録を削除</button></div>'
+    ).join("");
 }
-function closeMappings(){document.getElementById("mappingSection").style.display="none"}
+
+function closeMappings(){
+    document.getElementById("mappingSection").style.display="none";
+}
 
 function deleteMapping(itf){
     if(!confirm("この登録を削除しますか？\n\n"+itf))return;
-    const mappings=getMappings();delete mappings[itf];
+
+    const mappings=getMappings();
+    delete mappings[itf];
+
     localStorage.setItem("caseToUnitJAN",JSON.stringify(mappings));
     showMappings();
 }
 
 function csvEscape(value){
     value=String(value);
-    if(value.includes(",")||value.includes('"')||value.includes("\n"))return '"'+value.replace(/"/g,'""')+'"';
+
+    if(value.includes(",")||value.includes('"')||value.includes("\n"))
+        return '"'+value.replace(/"/g,'""')+'"';
+
     return value;
 }
 
@@ -481,58 +625,118 @@ function downloadCSV(csv,filename){
     const blob=new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"});
     const url=URL.createObjectURL(blob);
     const link=document.createElement("a");
-    link.href=url;link.download=filename;
-    document.body.appendChild(link);link.click();document.body.removeChild(link);
+
+    link.href=url;
+    link.download=filename;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
     URL.revokeObjectURL(url);
 }
 
 function exportHistoryCSV(){
     const history=getHistory();
-    if(!history.length){alert("変換履歴がありません");return}
+
+    if(!history.length){
+        alert("変換履歴がありません");
+        return;
+    }
+
     let csv="日時,ITF-14,JAN,変換方法\n";
-    history.forEach(item=>{csv+=csvEscape(item.date)+","+csvEscape(item.itf)+","+csvEscape(item.jan)+","+csvEscape(item.method)+"\n"});
+
+    history.forEach(item=>{
+        csv+=csvEscape(item.date)+","+
+             csvEscape(item.itf)+","+
+             csvEscape(item.jan)+","+
+             csvEscape(item.method)+"\n";
+    });
+
     downloadCSV(csv,"ITF_JAN_変換履歴.csv");
 }
 
 function exportMappingCSV(){
-    const mappings=getMappings(),keys=Object.keys(mappings);
-    if(!keys.length){alert("登録データがありません");return}
+    const mappings=getMappings();
+    const keys=Object.keys(mappings);
+
+    if(!keys.length){
+        alert("登録データがありません");
+        return;
+    }
+
     let csv="ケースITF-14,バラ売りJAN\n";
-    keys.forEach(itf=>{csv+=csvEscape(itf)+","+csvEscape(mappings[itf])+"\n"});
+
+    keys.forEach(itf=>{
+        csv+=csvEscape(itf)+","+csvEscape(mappings[itf])+"\n";
+    });
+
     downloadCSV(csv,"ITF_JAN_登録データ.csv");
 }
 
 function importMappingCSV(event){
-    const file=event.target.files[0];if(!file)return;
+    const file=event.target.files[0];
+    if(!file)return;
+
     const reader=new FileReader();
+
     reader.onload=function(e){
         let text=e.target.result.replace(/^\uFEFF/,"");
-        const lines=text.split(/\r?\n/),mappings=getMappings();
-        let successCount=0,errorCount=0;
+        const lines=text.split(/\r?\n/);
+        const mappings=getMappings();
+
+        let successCount=0;
+        let errorCount=0;
+
         lines.forEach((line,index)=>{
             if(!line.trim())return;
             if(index===0&&line.includes("ITF"))return;
+
             const parts=line.split(",");
-            if(parts.length<2){errorCount++;return}
-            const itf=parts[0].replace(/\D/g,""),jan=parts[1].replace(/\D/g,"");
-            if(itf.length===14&&isValidJan(jan)){mappings[itf]=jan;successCount++}else errorCount++;
+
+            if(parts.length<2){
+                errorCount++;
+                return;
+            }
+
+            const itf=parts[0].replace(/\D/g,"");
+            const jan=parts[1].replace(/\D/g,"");
+
+            if(itf.length===14&&isValidJan(jan)){
+                mappings[itf]=jan;
+                successCount++;
+            }else{
+                errorCount++;
+            }
         });
+
         localStorage.setItem("caseToUnitJAN",JSON.stringify(mappings));
-        alert("CSV登録完了！\n\n登録："+successCount+"件\nエラー："+errorCount+"件");
+
+        alert(
+            "CSV登録完了！\n\n"+
+            "登録："+successCount+"件\n"+
+            "エラー："+errorCount+"件"
+        );
+
         event.target.value="";
         showMappings();
     };
+
     reader.readAsText(file,"UTF-8");
 }
 
 function clearHistory(){
     if(!confirm("変換履歴をすべて削除しますか？"))return;
-    localStorage.removeItem("conversionHistory");showHistory();
+
+    localStorage.removeItem("conversionHistory");
+    showHistory();
 }
 
 function clearMappings(){
     if(!confirm("登録したITFとJANの対応をすべて削除しますか？"))return;
-    localStorage.removeItem("caseToUnitJAN");showMappings();
+
+    localStorage.removeItem("caseToUnitJAN");
+    showMappings();
 }
 
 window.addEventListener("load",function(){
